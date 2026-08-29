@@ -201,7 +201,7 @@ export const Home = () => {
         <Sheet title="Unfinished workout" onClose={() => setOrphan(null)}>
           <div className="stack">
             <p className="t-subhead label-2">
-              Resume it, or discard it.
+              Resume it, or discard it
             </p>
             <button className="btn-filled block" disabled={active !== null}
               onClick={() => {

@@ -70,7 +70,38 @@ describe('house copy rules', () => {
       const { reason } = suggestProgression(history, ex)
       expect(reason, reason).not.toMatch(/[—–]/)
       expect(reason.length, reason).toBeLessThan(140)
-      expect(reason.trim().endsWith('.'), reason).toBe(true)
+      // House rule: copy carries no closing period, and one thought never
+      // splits into two sentences.
+      expect(reason.trim().endsWith('.'), reason).toBe(false)
+      expect(reason, reason).not.toMatch(/\. [A-Z]/)
+    }
+  })
+
+  it('closes no piece of copy with a period', () => {
+    // A quoted phrase (it has a space) that ends in a period is prose, since
+    // identifiers and paths never end that way.
+    const phrase = /(['"`])[^'"`\n]*[a-z0-9%)\]] [^'"`\n]*\.\1/
+    // JSX text: whatever sits between two tags on its own line.
+    const jsxText = /^\s*[A-Z][^<>{}\n]{3,}\.\s*$/
+
+    for (const file of files) {
+      const code = withoutComments(readFileSync(file, 'utf8'))
+      const offenders = code
+        .split('\n')
+        .filter((line) => phrase.test(line) || jsxText.test(line))
+      expect(offenders, `${file}\n${offenders.join('\n')}`).toEqual([])
+    }
+  })
+
+  it('closes no preset note with a period either', () => {
+    const catalog = presetCatalog('lb')
+    for (const program of [pplProgram(), pplulProgram()]) {
+      for (const day of program.days) {
+        expect(day.notes.trim().endsWith('.'), day.name).toBe(false)
+        for (const t of day.exercises) {
+          expect(t.notes.trim().endsWith('.'), catalog[t.exerciseId].name).toBe(false)
+        }
+      }
     }
   })
 })

@@ -18,7 +18,7 @@ export const HistoryList = () => {
   return (
     <Screen id="history" title="History" subtitle={`${finished.length} workouts logged`} large>
         {finished.length === 0 && (
-          <div className="empty">Nothing logged yet.</div>
+          <div className="empty">Nothing logged yet</div>
         )}
         <div className="group">
         {finished.map((s) => (
@@ -47,7 +47,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
   if (!session) {
     return (
       <Screen id="history/missing" title="Workout" leading={<BackButton />}>
-        <div className="empty">This workout is gone.</div>
+        <div className="empty">This workout is gone</div>
       </Screen>
     )
   }
@@ -133,7 +133,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
       {confirm && (
         <Sheet title="Delete workout?" onClose={() => setConfirm(false)}>
           <div className="stack">
-            <p className="t-footnote label-2">This cannot be undone.</p>
+            <p className="t-footnote label-2">This cannot be undone</p>
             <button className="btn-tinted destructive block"
               onClick={() => { dispatch({ type: 'deleteSession', sessionId }); navigate('/history') }}>
               Delete

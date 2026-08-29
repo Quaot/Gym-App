@@ -14,33 +14,40 @@ launch screen.
 
 - **Screens, not pages.** Each screen owns its scrolling under a fixed bar.
   Drilling in slides the new screen over the old one; a swipe from the left
-  edge drags it back with your thumb, and letting go early springs it home.
+  edge drags it back with your thumb, and letting go early springs it home
 - **Large titles collapse** into the bar as you scroll, and every tab reopens
-  exactly where you left it.
+  exactly where you left it
 - **A workout rises from the bottom** the way a sheet does, since you enter it
-  from anywhere and leave it by finishing.
+  from anywhere and leave it by finishing
 - **Sheets drag away.** Pull one down past a third of its height, or flick it,
-  and it goes. The keyboard lifts a sheet instead of burying it.
-- **The screen stays awake** for the whole workout.
+  and it goes. The keyboard lifts a sheet instead of burying it
+- **The screen stays awake** for the whole workout
 - **Rest alerts** reach you when you have looked away, once you turn them on in
-  Settings. Notifications need the app on your Home Screen.
-- **New York** carries the titles and every number; SF carries the rest.
+  Settings. Notifications need the app on your Home Screen
+- **New York** carries the titles and every number, and SF carries the rest
+- **Liquid glass** for the control layer: the tab bar is a floating capsule,
+  and bars, buttons, sheets and the rest timer blur and brighten whatever
+  passes beneath them, with a specular rim along the top edge. Content itself
+  stays opaque, so nothing you read sits on glass
+- **No copy closes with a period**, and no line splits one thought into two
+  sentences. Both rules are enforced by tests, in the source and against the
+  rendered screen
 
 ## Logging a workout
 
 - **Tape inputs.** Weight and reps sit on a ruler that scrolls under a needle.
   Drag it with a tick at every detent, flick it to travel, or tap the number to
   type. The gesture runs on animation frames and never touches React, so it
-  tracks your thumb without skipping.
+  tracks your thumb without skipping
 - **One set at a time.** Finished and pending sets collapse to single lines.
-  Completing one collapses it, advances to the next, and starts the rest timer.
+  Completing one collapses it, advances to the next, and starts the rest timer
 - **It tells you what to lift.** Every working set is pre-filled with what the
-  progression engine suggests. Hold **Why** to read the reasoning.
+  progression engine suggests. Hold **Why** to read the reasoning
 - **Warm-ups build themselves** from the weight you are about to work with, on
-  the loadable grid, and never above your working set.
+  the loadable grid, and never above your working set
 - **Rest timer** floats over every screen, survives navigation and reloads,
-  chimes, and counts overtime.
-- **Cancel** sits in the workout itself, one confirmation away.
+  chimes, and counts overtime
+- **Cancel** sits in the workout itself, one confirmation away
 
 ## How the suggestions work
 
@@ -67,12 +74,12 @@ is covered by tests in `src/lib/progression.test.ts`.
 ## Your data
 
 - Stored on-device in localStorage, written per-slice with debouncing and
-  flushed the moment the app is backgrounded.
-- **Export/import backup** (JSON) in Settings; exports are Safari-proof.
+  flushed the moment the app is backgrounded
+- **Export/import backup** (JSON) in Settings; exports are Safari-proof
 - Malformed or hand-edited data is repaired, not rejected: bad entries are
   dropped individually and the rest survive. If rendering ever crashes anyway,
-  an error screen still offers *Download backup* and *Reset*.
-- Data from earlier releases migrates automatically on first launch.
+  an error screen still offers *Download backup* and *Reset*
+- Data from earlier releases migrates automatically on first launch
 
 ## Development
 

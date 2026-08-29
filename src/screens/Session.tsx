@@ -56,7 +56,7 @@ const SetRow = ({
         onClick={onActivate}
         aria-label={`${set.warmup ? 'Warm-up set' : `Set ${displayOrdinal}`}${set.done ? ', done' : ''}: ${
           weight !== null ? `${fmtWeight(weight)} ${settings.unit} × ` : ''
-        }${reps ?? ''} reps. Tap to edit.`}
+        }${reps ?? ''} reps, tap to edit`}
       >
         <span className="ord">{set.done ? <IconCheck /> : displayOrdinal}</span>
         <span className={`vals num${isGhost ? ' ghosted' : ''}`}>
@@ -286,7 +286,7 @@ const ExerciseCard = ({
       {confirmDeleteSet && (
         <Sheet title="Delete a completed set?" onClose={() => setConfirmDeleteSet(null)}>
           <div className="stack">
-            <p className="t-footnote label-2">This set is logged. Deleting it cannot be undone.</p>
+            <p className="t-footnote label-2">This set is logged. Deleting it cannot be undone</p>
             <button className="btn-tinted destructive block"
               onClick={() => {
                 dispatch({ type: 'deleteSet', exId: exercise.id, setId: confirmDeleteSet })
@@ -351,7 +351,7 @@ const AddExerciseSheet = ({ onClose }: { onClose: () => void }) => {
           </button>
         ))}
         <p className="t-caption label-3">
-          This workout only. The day's template stays as it is.
+          This workout only, since the day's template stays as it is
         </p>
         <button className="btn-filled block" onClick={() => add(name)} disabled={!name.trim()}>
           Add{name.trim() ? ` "${name.trim()}"` : ''}
@@ -425,8 +425,8 @@ export const SessionScreen = () => {
           <div className="stack">
             <p className="t-footnote label-2">
               {done > 0
-                ? `Throws away ${done} logged ${done === 1 ? 'set' : 'sets'}.`
-                : 'Nothing is logged yet.'}
+                ? `Throws away ${done} logged ${done === 1 ? 'set' : 'sets'}`
+                : 'Nothing is logged yet'}
             </p>
             <button className="btn-tinted destructive block"
               onClick={() => { dispatch({ type: 'discardActiveSession' }); switchTab('/') }}>
@@ -444,8 +444,8 @@ export const SessionScreen = () => {
           <div className="stack">
             <p className="t-footnote label-2">
               {done > 0
-                ? `Saves ${done} ${done === 1 ? 'set' : 'sets'}. Empty rows are dropped.`
-                : 'No sets logged yet.'}
+                ? `Saves ${done} ${done === 1 ? 'set' : 'sets'} and drops the empty rows`
+                : 'No sets logged yet'}
             </p>
             <button
               className="btn-filled block" disabled={done === 0}

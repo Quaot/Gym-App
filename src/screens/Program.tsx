@@ -76,7 +76,7 @@ export const ProgramScreen = () => {
         <button className="btn-gray block" onClick={() => act.addDay(program.id)}>+ Add day</button>
 
         <p className="t-caption label-3" style={{ marginTop: 16, padding: '0 4px' }}>
-          Edits apply to future workouts. Saved workouts keep what you did.
+          Edits apply to future workouts, while saved ones keep what you did
         </p>
       {renaming && (
         <Sheet title="Program name" onClose={() => setRenaming(false)}>
@@ -138,14 +138,15 @@ const SplitsSheet = ({ onClose }: { onClose: () => void }) => {
           Push, Pull, Legs, Upper, Lower
         </button>
         <p className="t-caption label-3">
-          Each split is a copy you can edit. History follows the exercise, not the split.
+          Each split is a copy you can edit, and history follows the exercise rather than
+          the split
         </p>
       </div>
 
       {confirmDelete && (
         <Sheet title={`Delete "${confirmDelete.name}"?`} onClose={() => setConfirmDelete(null)}>
           <div className="stack">
-            <p className="t-footnote label-2">Its days go. Logged workouts stay.</p>
+            <p className="t-footnote label-2">Its days go. Logged workouts stay</p>
             <button className="btn-tinted destructive block"
               onClick={() => { dispatch({ type: 'deleteProgram', programId: confirmDelete.id }); setConfirmDelete(null) }}>
               Delete split
@@ -400,7 +401,7 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
   if (!program || !day) {
     return (
       <Screen id="program/missing" title="Edit day" leading={<BackButton />}>
-        <div className="empty">That day no longer exists.</div>
+        <div className="empty">That day no longer exists</div>
       </Screen>
     )
   }
@@ -426,7 +427,7 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
 
         {day.exercises.length === 0 && (
           <div className="empty">
-            Nothing here yet.
+            Nothing here yet
             <div style={{ marginTop: 12 }}>
               <button className="btn-filled" onClick={() => setPasting(true)}>Paste a workout list</button>
             </div>
@@ -448,7 +449,7 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
       {confirmDelete && (
         <Sheet title={`Delete "${day.name}"?`} onClose={() => setConfirmDelete(false)}>
           <div className="stack">
-            <p className="t-footnote label-2">Saved workouts stay in your history.</p>
+            <p className="t-footnote label-2">Saved workouts stay in your history</p>
             <button className="btn-tinted destructive block"
               onClick={() => { dispatch({ type: 'deleteDay', programId: program.id, dayId }); navigate('/program') }}>
               Delete day

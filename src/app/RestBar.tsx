@@ -48,7 +48,7 @@ export const RestBar = () => {
     const over = remaining <= 0
     const pct = over ? 0 : Math.min(1, remaining / rest.totalSec)
     return (
-      <div className={`restbar${over ? ' over' : ''}`}>
+      <div className={`restbar glass${over ? ' over' : ''}`}>
         <div className="progress" style={{ width: `${pct * 100}%` }} />
         <span className="time num">{over ? `+${fmtClock(-remaining)}` : fmtClock(remaining)}</span>
         <span className="ctx">
@@ -68,7 +68,7 @@ export const RestBar = () => {
   // No rest running: on other screens, keep the live workout one tap away.
   if (activeSession && !onSession) {
     return (
-      <div className="restbar">
+      <div className="restbar glass">
         <span className="time num" style={{ fontSize: 18 }}>
           {fmtClock((now - activeSession.startedAt) / 1000)}
         </span>

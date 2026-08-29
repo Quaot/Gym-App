@@ -55,7 +55,7 @@ export const SleepImportCard = () => {
       }
     }
     worker.onerror = () => {
-      setProgress({ phase: 'error', message: 'That file could not be read.' })
+      setProgress({ phase: 'error', message: 'That file could not be read' })
       worker.terminate()
     }
     worker.postMessage({ file })
@@ -64,7 +64,7 @@ export const SleepImportCard = () => {
   return (
     <div className="group stack" style={{ padding: 14 }}>
       <p className="t-caption label-3">
-        {sleepCount > 0 ? `${sleepCount} nights on record.` : 'No sleep on record yet.'}
+        {sleepCount > 0 ? `${sleepCount} nights on record` : 'No sleep on record yet'}
       </p>
       <button
         className="btn-gray block"
@@ -82,8 +82,8 @@ export const SleepImportCard = () => {
       {progress.phase === 'done' && (
         <p className="t-subhead" style={{ color: 'var(--accent)' }}>
           {progress.nights > 0
-            ? `Imported ${progress.nights} nights of sleep.`
-            : 'No sleep records found in that file.'}
+            ? `Imported ${progress.nights} nights of sleep`
+            : 'No sleep records found in that file'}
         </p>
       )}
       {progress.phase === 'error' && (

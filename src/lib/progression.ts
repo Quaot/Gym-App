@@ -139,7 +139,7 @@ export const suggestProgression = (
   if (past.length === 0) {
     return {
       suggestion: { kind: 'first', weight: null, targetReps: repLow },
-      reason: `Find a weight you can hold for ${repLow} clean reps. That is your baseline.`,
+      reason: `Start with a weight you can hold for ${repLow} clean reps`,
     }
   }
 
@@ -161,7 +161,7 @@ export const suggestProgression = (
           targetReps: Math.min(repHigh, Math.max(...lastReps) + 1),
           perSetTargets: lastReps.map((r) => Math.min(repHigh, r + 1)),
         },
-        reason: `Add a rep where you can. ${repHigh} on every set unlocks the next step.`,
+        reason: `Add a rep where you can, since ${repHigh} on every set unlocks the next step`,
       }
     }
     if (repHigh < repCap) {
@@ -172,12 +172,12 @@ export const suggestProgression = (
           targetReps: Math.min(repCap, repHigh + 2),
           newRepHigh: Math.min(repCap, repHigh + 2),
         },
-        reason: `You own ${repHigh} reps. Push the range to ${Math.min(repCap, repHigh + 2)} before adding weight.`,
+        reason: `You own ${repHigh} reps, so push the range to ${Math.min(repCap, repHigh + 2)} before adding weight`,
       }
     }
     return {
       suggestion: { kind: 'addSet', weight: 0, targetReps: repLow, sets: plannedSets + 1 },
-      reason: `The range is maxed. Add a set, or start hanging weight from a belt.`,
+      reason: `The range is maxed, so add a set or hang weight from a belt`,
     }
   }
 
@@ -190,7 +190,7 @@ export const suggestProgression = (
         const newRepHigh = Math.min(repCap, repHigh + 2)
         return {
           suggestion: { kind: 'revert', weight: prevWeight, targetReps: newRepHigh, newRepHigh },
-          reason: `${weight} was a reach. Go back to ${prevWeight} and build to ${newRepHigh} reps first.`,
+          reason: `${weight} was a reach, so go back to ${prevWeight} and build to ${newRepHigh} reps first`,
         }
       }
     }
@@ -200,7 +200,7 @@ export const suggestProgression = (
     const deloaded = roundToStep(weight * (1 - DELOAD), increment)
     return {
       suggestion: { kind: 'deload', weight: deloaded, targetReps: repHigh },
-      reason: `Three sessions stuck. Drop to ${deloaded} and climb back with room to spare.`,
+      reason: `Three sessions stuck, so drop to ${deloaded} and climb back with room to spare`,
     }
   }
 
@@ -218,8 +218,8 @@ export const suggestProgression = (
       },
       reason:
         lagging > 0
-          ? `Bring set ${lagging + 1} up to ${repHigh}. Every set at ${repHigh} earns the next jump.`
-          : `Add a rep. Every set at ${repHigh} earns the next jump.`,
+          ? `Bring set ${lagging + 1} up to ${repHigh}, since every set at ${repHigh} earns the next jump`
+          : `Add a rep, since every set at ${repHigh} earns the next jump`,
     }
   }
 
@@ -234,7 +234,7 @@ export const suggestProgression = (
     const target = jump > JUMP_HARD ? repLow : Math.min(repHigh, Math.max(repLow, repHigh - drop))
     return {
       suggestion: { kind: 'load', weight: newWeight, targetReps: target },
-      reason: `You topped the range. ${increment} more is ${pct(jump)}, so expect about ${target} reps.`,
+      reason: `You topped the range, and ${increment} more is only ${pct(jump)}, so expect about ${target} reps`,
     }
   }
 
@@ -242,12 +242,12 @@ export const suggestProgression = (
     const newRepHigh = Math.min(repCap, repHigh + 2)
     return {
       suggestion: { kind: 'extend', weight, targetReps: newRepHigh, newRepHigh },
-      reason: `The smallest jump here is ${pct(jump)}, too steep. Build to ${newRepHigh} reps first.`,
+      reason: `The smallest jump here is ${pct(jump)}, too steep, so build to ${newRepHigh} reps first`,
     }
   }
 
   return {
     suggestion: { kind: 'addSet', weight, targetReps: repLow, sets: plannedSets + 1 },
-    reason: `The range is maxed and ${pct(jump)} is too big a jump. Add a set instead.`,
+    reason: `The range is maxed and ${pct(jump)} is too big a jump, so add a set instead`,
   }
 }

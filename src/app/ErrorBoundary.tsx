@@ -54,7 +54,7 @@ export class ErrorBoundary extends Component<Props, State> {
       <div style={{ padding: '48px 24px', maxWidth: 480, margin: '0 auto' }}>
         <h1 style={{ fontSize: 22 }}>Something went wrong</h1>
         <p style={{ color: 'var(--muted, #93a1b2)' }}>
-          Something went wrong. Download your data, then reset.
+          Download your data, then reset
         </p>
         <pre
           style={{
