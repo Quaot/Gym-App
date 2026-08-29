@@ -1,4 +1,4 @@
-import type { AppState, Unit } from '../types'
+import type { AppState, DayTemplate, Program, Unit } from '../types'
 import { decodeAppState } from './decode'
 import { resolveExercise } from '../lib/catalog'
 import { pplProgram, presetCatalog, presetTemplateMeta, setPresetUnit } from '../lib/presets'
@@ -141,6 +141,65 @@ export const migrateV2 = (raw: unknown): AppState => {
       }),
     })),
   }))
+
+  return { ...state, catalog, programs }
+}
+
+/* ------------------------------------------------------------------ *
+ * v3 -> v4: the six day rotation becomes ten.
+ * ------------------------------------------------------------------ */
+
+const PPL6_DAYS = ['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2']
+/** Upper 1 and Lower 1 land after Legs 1; the other two close the rotation. */
+const ADDED_MID = ['Upper 1', 'Lower 1']
+const ADDED_END = ['Upper 2', 'Lower 2']
+
+/**
+ * True only for a stored program still shaped the way the six day preset
+ * shipped it: the same days, in order, each holding the same movements in the
+ * same order. Changing a rep range or a rest is ordinary use and does not
+ * disqualify a program; adding, removing, reordering or renaming does, because
+ * then the days are yours and not the preset's to extend.
+ */
+const isUntouchedPpl6 = (p: Program, preset: Program): boolean => {
+  if (p.presetKey !== 'ppl6' || p.days.length !== PPL6_DAYS.length) return false
+  return p.days.every((d, i) => {
+    if (d.name !== PPL6_DAYS[i]) return false
+    const want = preset.days.find((x) => x.name === d.name)
+    if (!want) return false
+    const mine = d.exercises.map((t) => t.exerciseId)
+    const theirs = want.exercises.map((t) => t.exerciseId)
+    return mine.length === theirs.length && mine.every((id, j) => id === theirs[j])
+  })
+}
+
+/**
+ * Adds the four new days to a program that still matches the preset, and
+ * leaves every other program exactly as it is. Running twice changes nothing,
+ * since a program that already has ten days no longer matches.
+ */
+export const migrateV3 = (raw: unknown): AppState => {
+  const state = decodeV2(raw)
+  const preset = pplProgram()
+  if (!state.programs.some((p) => isUntouchedPpl6(p, preset))) return state
+
+  const full = presetCatalog(state.settings.unit)
+  const catalog = { ...state.catalog }
+  const take = (name: string): DayTemplate => {
+    const d = preset.days.find((x) => x.name === name)!
+    // Adopt any movement this catalog is missing, or the decoder would drop
+    // the template on the next read.
+    for (const t of d.exercises) catalog[t.exerciseId] ??= full[t.exerciseId]
+    return d
+  }
+
+  const programs = state.programs.map((p) => {
+    if (!isUntouchedPpl6(p, preset)) return p
+    const days = [...p.days]
+    days.splice(3, 0, ...ADDED_MID.map(take))
+    days.push(...ADDED_END.map(take))
+    return { ...p, days }
+  })
 
   return { ...state, catalog, programs }
 }

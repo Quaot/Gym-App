@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { AppState, Session, SessionExercise } from '../types'
 import { useAppSelector, dispatch, getStore } from '../store/store'
 import { act } from '../store/actions'
@@ -7,8 +7,9 @@ import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
 import { Screen, forgetScroll } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
-import { fmtClock, fmtWeight } from '../lib/util'
+import { fmtClock, fmtWeight, uid } from '../lib/util'
 import { prefillFor } from '../lib/prefill'
+import { reconcileWarmups } from '../lib/warmups'
 import { suggestionFor } from '../lib/suggest'
 import { InfoPopover } from '../components/InfoPopover'
 import { lastPerformance, workingSets, sessionDoneSetCount } from '../lib/history'
@@ -174,6 +175,8 @@ const ExerciseCard = ({
 }) => {
   const unit = useAppSelector((s) => s.settings.unit)
   const sessions = useAppSelector((s) => s.sessions)
+  const catalog = useAppSelector((s) => s.catalog)
+  const settings = useAppSelector((s) => s.settings)
   const [menu, setMenu] = useState(false)
   const [confirmDeleteSet, setConfirmDeleteSet] = useState<string | null>(null)
 
@@ -181,6 +184,35 @@ const ExerciseCard = ({
     () => lastPerformance(sessions, exercise.exerciseId, session.id),
     [sessions, exercise.exerciseId, session.id],
   )
+
+  /**
+   * The ramp follows the weight you are about to lift. It comes from the first
+   * working set, whether that is the coaching suggestion, last session, or a
+   * weight you just dialled in yourself. That is what makes a warm-up appear
+   * on a movement's very first session, when there is no history to build one
+   * from at the moment the workout starts.
+   */
+  const increment = catalog[exercise.exerciseId]?.increment ?? settings.weightStep
+  const plannedWeight = useMemo(() => {
+    const firstWorking = exercise.sets.find((x) => !x.warmup)
+    if (firstWorking?.weight != null) return firstWorking.weight
+    const index = exercise.sets.findIndex((x) => !x.warmup)
+    if (index < 0) return null
+    return prefillFor(
+      { sessions, settings, catalog },
+      session,
+      exercise,
+      index,
+    ).weight
+  }, [exercise, session, sessions, settings, catalog])
+
+  useEffect(() => {
+    if (exercise.warmupPlan.length === 0) return
+    const next = reconcileWarmups(
+      exercise.sets, exercise.warmupPlan, plannedWeight, increment, uid,
+    )
+    if (next !== exercise.sets) dispatch({ type: 'setSets', exId: exercise.id, sets: next })
+  }, [exercise, plannedWeight, increment])
 
   const target = exercise.repLow === exercise.repHigh
     ? `${exercise.sets.length} × ${exercise.repLow}`

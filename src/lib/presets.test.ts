@@ -18,8 +18,58 @@ const allExercises = days.flatMap((d) => d.exercises.map((e) => ({ day: d.name, 
 const S_ALLOWED = new Set(['Press', 'Biceps', 'Triceps', 'Cross'])
 
 describe('program shape', () => {
-  it('runs the six PPL days in rotation order', () => {
-    expect(program.days.map((d) => d.name)).toEqual(['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2'])
+  it('runs the ten PPL days in rotation order', () => {
+    expect(program.days.map((d) => d.name)).toEqual([
+      'Push 1', 'Pull 1', 'Legs 1', 'Upper 1', 'Lower 1',
+      'Push 2', 'Pull 2', 'Legs 2', 'Upper 2', 'Lower 2',
+    ])
+  })
+
+  it('gives the two Upper days no exercise in common', () => {
+    const byName = (n: string) => program.days.find((d) => d.name === n)!
+    const one = new Set(byName('Upper 1').exercises.map((e) => e.exerciseId))
+    const two = byName('Upper 2').exercises.map((e) => e.exerciseId)
+    expect(two.filter((id) => one.has(id))).toEqual([])
+  })
+
+  it('makes neither Lower day a copy of a Legs day', () => {
+    const ids = (n: string) =>
+      program.days.find((d) => d.name === n)!.exercises.map((e) => e.exerciseId).join()
+    for (const lower of ['Lower 1', 'Lower 2']) {
+      expect(ids(lower)).not.toBe(ids('Legs 1'))
+      expect(ids(lower)).not.toBe(ids('Legs 2'))
+    }
+  })
+
+  it('leads each lower day with a different pattern', () => {
+    const first = (n: string) => program.days.find((d) => d.name === n)!.exercises[0].exerciseId
+    expect(new Set(['Legs 1', 'Legs 2', 'Lower 1', 'Lower 2'].map(first)).size).toBe(4)
+  })
+
+  it('draws the new days from movements the split already trains', () => {
+    // History follows a slug, so a new day must not introduce a stranger.
+    const original = new Set(
+      ['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2'].flatMap((n) =>
+        program.days.find((d) => d.name === n)!.exercises.map((e) => e.exerciseId),
+      ),
+    )
+    for (const n of ['Upper 1', 'Lower 1', 'Upper 2', 'Lower 2']) {
+      for (const t of program.days.find((d) => d.name === n)!.exercises) {
+        expect(original.has(t.exerciseId), `${n}: ${t.exerciseId}`).toBe(true)
+      }
+    }
+  })
+
+  it('keeps every day within the working set range the others occupy', () => {
+    for (const d of program.days) {
+      const sets = d.exercises.reduce((n, e) => n + e.sets, 0)
+      expect(sets, d.name).toBeGreaterThanOrEqual(16)
+      expect(sets, d.name).toBeLessThanOrEqual(25)
+    }
+  })
+
+  it('still runs the five day split at five days', () => {
+    expect(pplul.days).toHaveLength(5)
   })
 
   it('runs the five PPLUL days in Push→Pull→Legs→Upper→Lower order', () => {

@@ -49,10 +49,10 @@ const newPage = async (viewport = { width: 390, height: 844 }) => {
 
 const readState = (page) =>
   page.evaluate(() => ({
-    core: JSON.parse(localStorage.getItem('gym:v3:core') ?? 'null'),
-    sessions: JSON.parse(localStorage.getItem('gym:v3:sessions') ?? '[]'),
-    sleep: JSON.parse(localStorage.getItem('gym:v3:sleep') ?? '[]'),
-    rest: JSON.parse(localStorage.getItem('gym:v3:rest') ?? 'null'),
+    core: JSON.parse(localStorage.getItem('gym:v4:core') ?? 'null'),
+    sessions: JSON.parse(localStorage.getItem('gym:v4:sessions') ?? '[]'),
+    sleep: JSON.parse(localStorage.getItem('gym:v4:sleep') ?? '[]'),
+    rest: JSON.parse(localStorage.getItem('gym:v4:rest') ?? 'null'),
   }))
 
 const flushStorage = (page) =>
@@ -111,7 +111,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   const v1 = JSON.parse(v1Fixture)
   const state = await readState(page)
-  assert(state.core?.version === 3, '1. v1 blob migrates to v3 keys')
+  assert(state.core?.version === 4, '1. v1 blob migrates all the way to the v4 keys')
   assert(
     await page.evaluate(() => localStorage.getItem('gym-app:state:v1')) === null,
     '1. old key removed after migration',
@@ -142,7 +142,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     // time of a *valid* envelope: decode repairs this, so instead poison the
     // renderer path via an unparsable core that forces the fresh-state path…
     // …which never throws. So simulate the true worst case: a render crash.
-    localStorage.setItem('gym:v3:core', '{"version":3') // truncated JSON
+    localStorage.setItem('gym:v4:core', '{"version":4') // truncated JSON
   })
   await page.reload()
   await page.waitForSelector('.group')
@@ -150,7 +150,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Force a genuine render crash to exercise the ErrorBoundary itself.
   await page.evaluate(() => {
-    localStorage.setItem('gym:v3:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
       id: 'x', startedAt: 1, finishedAt: 2, dayName: 'D', dayNotes: '', notes: '',
       exercises: [], programId: null, dayId: null,
     }]))
@@ -384,7 +384,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
         }],
       })
     }
-    localStorage.setItem('gym:v3:sessions', JSON.stringify(sessions))
+    localStorage.setItem('gym:v4:sessions', JSON.stringify(sessions))
   })
   await page.reload()
   await page.waitForSelector('.group')
@@ -480,7 +480,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.reload()
   await page.waitForSelector('.group')
   await page.evaluate(() => {
-    localStorage.setItem('gym:v3:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
       id: 'orphan1', programId: null, dayId: null, dayName: 'Push 1', dayNotes: '', notes: '',
       startedAt: Date.now() - 86400000, finishedAt: null,
       exercises: [{
@@ -529,10 +529,10 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Seed one topped bench session so the engine has a weight to plan from.
   await page.evaluate(() => {
-    const core = JSON.parse(localStorage.getItem('gym:v3:core'))
+    const core = JSON.parse(localStorage.getItem('gym:v4:core'))
     const day = core.programs[0].days[0]
     const t = Date.now() - 3 * 86400000
-    localStorage.setItem('gym:v3:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
       id: 'seed', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
       dayNotes: day.notes, startedAt: t - 3600000, finishedAt: t, notes: '',
       exercises: [{
@@ -805,6 +805,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     await page.locator('.sheet-backdrop').evaluate((el) => el.parentElement === document.body),
     '19m. sheets render above the whole app',
   )
+  await page.waitForTimeout(500) // let the sheet finish rising before measuring
   const grab = await page.locator('.sheet-drag').boundingBox()
   await page.mouse.move(grab.x + grab.width / 2, grab.y + 8)
   await page.mouse.down()
@@ -820,6 +821,42 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     '19o. and leaves the workout running',
   )
   assert(errors.length === 0, '19. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 20. The ten day rotation
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Program' }).click()
+  await page.waitForTimeout(300)
+  const days = await page.locator('.group .row-item .name').allInnerTexts()
+  assert(
+    days.join('|') === 'Push 1|Pull 1|Legs 1|Upper 1|Lower 1|Push 2|Pull 2|Legs 2|Upper 2|Lower 2',
+    '20a. the split runs ten days in order',
+    days.join('|'),
+  )
+
+  // Training Legs 1 puts Upper 1 up next.
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(250)
+  await page.locator('.row-item', { hasText: 'Legs 1' }).first().click()
+  await page.waitForSelector('.set-editor')
+  await page.locator('.set-editor .complete').click()
+  await page.waitForTimeout(300)
+  await page.getByRole('button', { name: 'Finish' }).click()
+  await page.waitForSelector('.sheet')
+  await page.getByRole('button', { name: 'Save workout' }).click()
+  await page.waitForTimeout(700)
+  const upNext = await page.locator('.metric-head .name').first().innerText()
+  assert(upNext === 'Upper 1', '20b. the rotation advances to the next day', upNext)
+  assert(errors.length === 0, '20. no console errors', errors.join('; '))
   await ctx.close()
 }
 
