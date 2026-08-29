@@ -62,7 +62,7 @@ export const LineChart = ({
   const [scrub, setScrub] = useState<number | null>(null)
 
   if (points.length === 0) {
-    return <div className="empty small">Nothing here yet.</div>
+    return <div className="empty small">No data yet.</div>
   }
 
   const pad = { l: 34, r: 12, t: 14, b: 22 }
@@ -145,13 +145,13 @@ export const LineChart = ({
       <div className="row tiny" style={{ minHeight: 18, padding: '0 4px' }}>
         {scrubbed ? (
           <>
-            <span className="muted">{formatT(scrubbed.t)}</span>
+            <span className="label-2">{formatT(scrubbed.t)}</span>
             <span className="spacer" />
             <span className="num" style={{ fontWeight: 700 }}>{format(scrubbed.value)}</span>
-            {scrubbed.label && <span className="muted"> · {scrubbed.label}</span>}
+            {scrubbed.label && <span className="label-2"> · {scrubbed.label}</span>}
           </>
         ) : (
-          <span className="faint">Touch the chart to inspect a session</span>
+          <span className="label-3">Touch to inspect</span>
         )}
       </div>
     </div>
@@ -303,7 +303,7 @@ export const Scatter = ({
   const pad = { l: 40, r: 12, t: 12, b: 26 }
   const w = Math.max(120, width) - pad.l - pad.r
   const h = height - pad.t - pad.b
-  if (points.length === 0) return <div className="empty small">No paired data yet.</div>
+  if (points.length === 0) return <div className="empty small">No data yet.</div>
 
   const xsv = points.map((p) => p.x)
   const ysv = points.map((p) => p.y)
@@ -350,12 +350,12 @@ export const Scatter = ({
       <div className="row tiny" style={{ minHeight: 18, padding: '0 4px' }}>
         {p ? (
           <>
-            <span className="muted">{p.label}</span>
+            <span className="label-2">{p.label}</span>
             <span className="spacer" />
             <span className="num" style={{ fontWeight: 700 }}>{formatX(p.x)} · {formatY(p.y)}</span>
           </>
         ) : (
-          <span className="faint">Tap a dot to inspect a session</span>
+          <span className="label-3">Tap to inspect</span>
         )}
       </div>
     </div>

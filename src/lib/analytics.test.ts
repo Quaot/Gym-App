@@ -18,7 +18,7 @@ const sessionAt = (
   programId: null, dayId: null, dayName: 'D', dayNotes: '',
   startedAt: finishedAt - 3_600_000,
   finishedAt,
-  exercises: [{ id: `e${n++}`, exerciseId, name, repLow: 5, repHigh: 8, restSec: 120, notes: '', sets }],
+  exercises: [{ id: `e${n++}`, exerciseId, name, repLow: 5, repHigh: 8, repCap: 13, restSec: 120, warmupPlan: [], notes: '', sets }],
   notes: '',
 })
 

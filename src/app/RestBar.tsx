@@ -46,13 +46,13 @@ export const RestBar = () => {
         <div className="progress" style={{ width: `${pct * 100}%` }} />
         <span className="time num">{over ? `+${fmtClock(-remaining)}` : fmtClock(remaining)}</span>
         <span className="ctx">
-          {over ? 'Rest is up — go' : rest.exerciseName || 'Resting'}
+          {over ? 'Rest is up' : rest.exerciseName || 'Resting'}
         </span>
         <span className="spacer" />
-        <button className="btn sm ghost" onClick={() => dispatch({ type: 'extendRest', bySec: 30 })}>
+        <button className="btn-plain" onClick={() => dispatch({ type: 'extendRest', bySec: 30 })}>
           +30s
         </button>
-        <button className="btn sm" onClick={() => dispatch({ type: 'stopRest' })}>
+        <button className="btn-plain" onClick={() => dispatch({ type: 'stopRest' })}>
           {over ? 'Done' : 'Skip'}
         </button>
       </div>
@@ -68,7 +68,7 @@ export const RestBar = () => {
         </span>
         <span className="ctx">{activeSession.dayName} in progress</span>
         <span className="spacer" />
-        <button className="btn sm primary" onClick={() => navigate('/session')}>
+        <button className="btn-plain strong" onClick={() => navigate('/session')}>
           Back to workout
         </button>
       </div>

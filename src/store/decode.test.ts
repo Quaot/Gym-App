@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { SCHEMA_VERSION } from '../types'
 import { decodeAppState, decodeRest } from './decode'
 import { freshState } from './migrate'
 import { pplProgram, presetCatalog } from '../lib/presets'
@@ -30,7 +31,7 @@ describe('decodeAppState never throws', () => {
 
   it.each(hostile.map((h, i) => [i, h] as const))('case %i decodes to a valid state', (_, raw) => {
     const state = decode(raw)
-    expect(state.version).toBe(2)
+    expect(state.version).toBe(SCHEMA_VERSION)
     expect(state.programs.length).toBeGreaterThan(0)
     expect(state.programs.some((p) => p.id === state.activeProgramId)).toBe(true)
     expect(Array.isArray(state.sessions)).toBe(true)

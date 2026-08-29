@@ -25,19 +25,19 @@ export const HistoryList = () => {
 
       <main className="main">
         {finished.length === 0 && (
-          <div className="empty">No finished workouts yet — go lift something.</div>
+          <div className="empty">Nothing logged yet.</div>
         )}
         {finished.map((s) => (
-          <button key={s.id} className="list-item" onClick={() => navigate(`/history/${s.id}`)}>
+          <button key={s.id} className="row-item" onClick={() => navigate(`/history/${s.id}`)}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 650 }}>{s.dayName}</div>
-              <div className="small muted num">
+              <div className="t-footnote label-2 num">
                 {fmtDate(s.finishedAt ?? s.startedAt)} · {sessionSetCount(s)} sets ·{' '}
                 {fmtDuration((s.finishedAt ?? s.startedAt) - s.startedAt)} ·{' '}
                 {Math.round(sessionVolume(s)).toLocaleString()} {unit}
               </div>
             </div>
-            <span className="chev">›</span>
+            <span className="chevron">›</span>
           </button>
         ))}
       </main>
@@ -53,7 +53,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
   if (!session) {
     return (
       <main className="main">
-        <div className="empty">That workout is no longer here.</div>
+        <div className="empty">This workout is gone.</div>
       </main>
     )
   }
@@ -63,7 +63,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
   return (
     <>
       <header className="topbar">
-        <button className="btn sm ghost" aria-label="Back" onClick={back}><IconBack /></button>
+        <button className="btn-plain" aria-label="Back" onClick={back}><IconBack /></button>
         <h1>
           {session.dayName}
           <span className="sub">{fmtDate(session.finishedAt ?? session.startedAt)}</span>
@@ -71,7 +71,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
       </header>
 
       <main className="main">
-        <div className="stat-grid" style={{ marginBottom: 12 }}>
+        <div className="stat-row" style={{ marginBottom: 12 }}>
           <div className="stat">
             <div className="label">Duration</div>
             <div className="value num">{fmtDuration(split.totalMs)}</div>
@@ -98,7 +98,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
           <div className="stat">
             <div className="label">Avg rest</div>
             <div className="value num">
-              {split.avgRestMs !== null ? fmtClock(split.avgRestMs / 1000) : '—'}
+              {split.avgRestMs !== null ? fmtClock(split.avgRestMs / 1000) : ''}
             </div>
           </div>
         </div>
@@ -107,7 +107,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
           const warm = warmupSets(e)
           const work = workingSets(e)
           return (
-            <div key={e.id} className="card tight">
+            <div key={e.id} className="group">
               <div className="ex-head"><span className="ex-name" style={{ fontSize: 16 }}>{e.name}</span></div>
               {warm.map((s) => (
                 <div key={s.id} className="row small num" style={{ padding: '3px 0', color: 'var(--warm)' }}>
@@ -119,11 +119,11 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
                 const rested = restBefore(session, s.id)
                 return (
                   <div key={s.id} className="row small num" style={{ padding: '3px 0' }}>
-                    <span className="muted" style={{ width: 24 }}>{i + 1}</span>
+                    <span className="label-2" style={{ width: 24 }}>{i + 1}</span>
                     <span>{fmtSet(s.weight, s.reps, unit)}</span>
                     <span className="spacer" />
                     {rested !== null && (
-                      <span className="tiny faint">rested {fmtClock(rested / 1000)}</span>
+                      <span className="t-caption label-3">rested {fmtClock(rested / 1000)}</span>
                     )}
                   </div>
                 )
@@ -133,24 +133,24 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
         })}
 
         {session.notes && (
-          <div className="card tight">
-            <div className="tiny faint" style={{ fontWeight: 700 }}>NOTES</div>
-            <div className="small" style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{session.notes}</div>
+          <div className="group">
+            <div className="t-caption label-3" style={{ fontWeight: 700 }}>NOTES</div>
+            <div className="t-subhead" style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{session.notes}</div>
           </div>
         )}
 
-        <button className="btn block danger" onClick={() => setConfirm(true)}>Delete this workout</button>
+        <button className="btn-tinted destructive block" onClick={() => setConfirm(true)}>Delete this workout</button>
       </main>
 
       {confirm && (
         <Sheet title="Delete workout?" onClose={() => setConfirm(false)}>
           <div className="stack">
-            <p className="small muted">This can't be undone.</p>
-            <button className="btn danger block"
+            <p className="t-footnote label-2">This cannot be undone.</p>
+            <button className="btn-tinted destructive block"
               onClick={() => { dispatch({ type: 'deleteSession', sessionId }); navigate('/history') }}>
               Delete
             </button>
-            <button className="btn ghost block" onClick={() => setConfirm(false)}>Cancel</button>
+            <button className="btn-gray block" onClick={() => setConfirm(false)}>Cancel</button>
           </div>
         </Sheet>
       )}

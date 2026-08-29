@@ -37,10 +37,10 @@ const SleepQuickLog = () => {
     : 7.5 * 60
 
   return (
-    <div className="card sleep-quick">
+    <div className="group sleep-quick">
       <div className="row" style={{ marginBottom: 2 }}>
         <IconMoon />
-        <span style={{ fontWeight: 700 }}>Last night's sleep</span>
+        <span style={{ fontWeight: 700 }}>Last night</span>
         <span className="spacer" />
         {tonight && <span className="pill sleep num">{(tonight.asleepMin / 60).toFixed(1)}h logged</span>}
       </div>
@@ -130,8 +130,8 @@ export const ProgressScreen = () => {
       <main className="main">
         <SleepQuickLog />
 
-        <div className="section-title">Weekly volume ({unit})</div>
-        <div className="card chart-card">
+        <div className="section-header">Weekly volume ({unit})</div>
+        <div className="group chart-card">
           <Bars
             values={weekly.map((b) => Math.round(b.volume))}
             labels={weekly.map((b, i) =>
@@ -141,16 +141,16 @@ export const ProgressScreen = () => {
           />
         </div>
 
-        <div className="section-title">Calendar</div>
-        <div className="card chart-card">
+        <div className="section-header">Calendar</div>
+        <div className="group chart-card">
           <div className="row" style={{ marginBottom: 8 }}>
-            <button className="btn sm ghost" aria-label="Previous month" onClick={() => setMonthShift((m) => m - 1)}>‹</button>
+            <button className="btn-plain" aria-label="Previous month" onClick={() => setMonthShift((m) => m - 1)}>‹</button>
             <span className="chart-title" style={{ margin: 0, flex: 1, textAlign: 'center' }}>{monthName}</span>
-            <button className="btn sm ghost" aria-label="Next month" disabled={monthShift >= 0}
+            <button className="btn-plain" aria-label="Next month" disabled={monthShift >= 0}
               onClick={() => setMonthShift((m) => Math.min(0, m + 1))}>›</button>
           </div>
           <CalendarHeatmap days={month} monthTs={monthTs} />
-          <div className="stat-grid" style={{ marginTop: 10 }}>
+          <div className="stat-row" style={{ marginTop: 10 }}>
             <div className="stat">
               <div className="label">Workouts</div>
               <div className="value num">{monthSessions.length}</div>
@@ -169,8 +169,8 @@ export const ProgressScreen = () => {
           </div>
         </div>
 
-        <div className="section-title">Sleep × performance</div>
-        <div className="card chart-card">
+        <div className="section-header">Sleep × performance</div>
+        <div className="group chart-card">
           {correlation.points.length >= 5 ? (
             <>
               <Scatter
@@ -188,30 +188,29 @@ export const ProgressScreen = () => {
               <CorrelationSummaryLine r={correlation.r} buckets={correlation.buckets} />
             </>
           ) : (
-            <p className="small muted" style={{ margin: '4px 4px 8px' }}>
-              Log sleep (above, or import from Apple Health in Settings) and keep training —
-              once at least 5 workouts have a previous-night entry, the correlation shows up here.
+            <p className="t-footnote label-2" style={{ margin: '4px 4px 8px' }}>
+              Log five nights before a workout to see the pattern.
             </p>
           )}
         </div>
 
-        <div className="section-title">Exercises</div>
-        {exercises.length === 0 && <div className="empty">Finish a workout and your lifts appear here.</div>}
+        <div className="section-header">Exercises</div>
+        {exercises.length === 0 && <div className="empty">Nothing logged yet.</div>}
         {exercises.map((e) => {
           const pb = personalBest(state, e.id)
           const bodyweight = state.catalog[e.id]?.bodyweight ?? false
           return (
-            <button key={e.id} className="list-item" onClick={() => navigate(`/progress/${e.id}`)}>
+            <button key={e.id} className="row-item" onClick={() => navigate(`/progress/${e.id}`)}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontWeight: 650 }}>{e.name}</div>
-                <div className="small muted num">
+                <div className="t-footnote label-2 num">
                   last {fmtDate(e.lastAt)}
                   {pb && (bodyweight
                     ? ` · best ${pb.reps} reps`
                     : ` · best ${fmtWeight(pb.weight)}×${pb.reps} (≈${fmtWeight(Math.round(est1RM(pb, false) * 10) / 10)} ${unit})`)}
                 </div>
               </div>
-              <span className="chev">›</span>
+              <span className="chevron">›</span>
             </button>
           )
         })}
@@ -227,7 +226,7 @@ const CorrelationSummaryLine = ({ r, buckets }: {
   const best = buckets.filter((b) => b.meanDelta !== null && b.sessions >= 2)
     .sort((a, b) => (b.meanDelta ?? 0) - (a.meanDelta ?? 0))[0]
   return (
-    <div className="small muted" style={{ margin: '6px 4px 2px' }}>
+    <div className="t-footnote label-2" style={{ margin: '6px 4px 2px' }}>
       <span className="num" style={{ fontWeight: 700, color: 'var(--text)' }}>r = {r.toFixed(2)}</span>
       {best && best.meanDelta !== null && best.meanDelta > 0.005 && (
         <> · after {best.label} of sleep you lift{' '}
@@ -260,7 +259,7 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
   return (
     <>
       <header className="topbar">
-        <button className="btn sm ghost" aria-label="Back" onClick={back}><IconBack /></button>
+        <button className="btn-plain" aria-label="Back" onClick={back}><IconBack /></button>
         <h1>
           {exercise?.name ?? 'Exercise'}
           <span className="sub">{trend.length} sessions logged</span>
@@ -268,7 +267,7 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
       </header>
 
       <main className="main">
-        <div className="range-chips" role="tablist" aria-label="Time range">
+        <div className="seg" role="tablist" aria-label="Time range">
           {RANGES.map((r) => (
             <button key={r.label} className={r.label === range.label ? 'on' : ''}
               role="tab" aria-selected={r.label === range.label}
@@ -278,7 +277,7 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
           ))}
         </div>
 
-        <div className="card chart-card">
+        <div className="group chart-card">
           <div className="chart-title">
             {bodyweight ? 'Best set (reps)' : `Estimated 1RM (${unit})`}
           </div>
@@ -294,7 +293,7 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
         </div>
 
         {pb && (
-          <div className="stat-grid">
+          <div className="stat-row">
             <div className="stat">
               <div className="label">Best set</div>
               <div className="value num">
@@ -317,15 +316,15 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
           </div>
         )}
 
-        <div className="section-title">Every session</div>
+        <div className="section-header">Every session</div>
         {shown.slice().reverse().map((p, i) => (
-          <div key={i} className="card tight row">
-            <span className="small" style={{ fontWeight: 650 }}>{fmtDate(p.t)}</span>
+          <div key={i} className="row-item">
+            <span className="t-subhead" style={{ fontWeight: 650 }}>{fmtDate(p.t)}</span>
             {p.isPR && <span className="pill accent">PR</span>}
             <span className="spacer" />
-            <span className="small num">
+            <span className="t-subhead num">
               {p.weight !== null ? `${fmtWeight(p.weight)} ${unit} × ${p.reps}` : `${p.reps} reps`}
-              <span className="faint"> · {bodyweight ? p.score : `≈${fmtWeight(p.score)}`}</span>
+              <span className="label-3"> · {bodyweight ? p.score : `≈${fmtWeight(p.score)}`}</span>
             </span>
           </div>
         ))}

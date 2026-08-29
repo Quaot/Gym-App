@@ -1,0 +1,927 @@
+{
+  "version": 2,
+  "catalog": {
+    "barbell-bench-press": {
+      "id": "barbell-bench-press",
+      "name": "Barbell Bench Press",
+      "bodyweight": false,
+      "archived": false
+    },
+    "barbell-larsen-press": {
+      "id": "barbell-larsen-press",
+      "name": "Barbell Larsen Press",
+      "bodyweight": false,
+      "archived": false
+    },
+    "standing-arnold-press": {
+      "id": "standing-arnold-press",
+      "name": "Standing Arnold Press",
+      "bodyweight": false,
+      "archived": false
+    },
+    "press-around": {
+      "id": "press-around",
+      "name": "Press-Around",
+      "bodyweight": false,
+      "archived": false
+    },
+    "pec-stretch": {
+      "id": "pec-stretch",
+      "name": "Pec Stretch",
+      "bodyweight": false,
+      "archived": false
+    },
+    "cross-body-cable-y-raise": {
+      "id": "cross-body-cable-y-raise",
+      "name": "Cross-Body Cable Y-Raise",
+      "bodyweight": false,
+      "archived": false
+    },
+    "squeeze-only-triceps-pressdown": {
+      "id": "squeeze-only-triceps-pressdown",
+      "name": "Squeeze-Only Triceps Pressdown",
+      "bodyweight": false,
+      "archived": false
+    },
+    "stretch-only-overhead-triceps-extension": {
+      "id": "stretch-only-overhead-triceps-extension",
+      "name": "Stretch-Only Overhead Triceps Extension",
+      "bodyweight": false,
+      "archived": false
+    },
+    "cross-body-triceps-extension": {
+      "id": "cross-body-triceps-extension",
+      "name": "Cross-Body Triceps Extension",
+      "bodyweight": false,
+      "archived": false
+    },
+    "lat-pulldown": {
+      "id": "lat-pulldown",
+      "name": "Lat Pulldown",
+      "bodyweight": false,
+      "archived": false
+    },
+    "omni-grip-chest-supported-row": {
+      "id": "omni-grip-chest-supported-row",
+      "name": "Omni-Grip Chest-Supported Row",
+      "bodyweight": false,
+      "archived": false
+    },
+    "bottom-half-dumbbell-pullover": {
+      "id": "bottom-half-dumbbell-pullover",
+      "name": "Bottom-Half Dumbbell Pullover",
+      "bodyweight": false,
+      "archived": false
+    },
+    "lat-stretch": {
+      "id": "lat-stretch",
+      "name": "Lat Stretch",
+      "bodyweight": false,
+      "archived": false
+    },
+    "omni-directional-cable-face-pull": {
+      "id": "omni-directional-cable-face-pull",
+      "name": "Omni-Directional Cable Face Pull",
+      "bodyweight": false,
+      "archived": false
+    },
+    "ez-bar-biceps-curl": {
+      "id": "ez-bar-biceps-curl",
+      "name": "EZ-Bar Biceps Curl",
+      "bodyweight": false,
+      "archived": false
+    },
+    "bottom-half-dumbbell-preacher-curl": {
+      "id": "bottom-half-dumbbell-preacher-curl",
+      "name": "Bottom-Half Dumbbell Preacher Curl",
+      "bodyweight": false,
+      "archived": false
+    },
+    "squat": {
+      "id": "squat",
+      "name": "Squat",
+      "bodyweight": false,
+      "archived": false
+    },
+    "paused-squat": {
+      "id": "paused-squat",
+      "name": "Paused Squat",
+      "bodyweight": false,
+      "archived": false
+    },
+    "romanian-deadlift": {
+      "id": "romanian-deadlift",
+      "name": "Romanian Deadlift",
+      "bodyweight": false,
+      "archived": false
+    },
+    "walking-lunge": {
+      "id": "walking-lunge",
+      "name": "Walking Lunge",
+      "bodyweight": false,
+      "archived": false
+    },
+    "seated-leg-curl": {
+      "id": "seated-leg-curl",
+      "name": "Seated Leg Curl",
+      "bodyweight": false,
+      "archived": false
+    },
+    "leg-press-toe-press": {
+      "id": "leg-press-toe-press",
+      "name": "Leg Press Toe Press",
+      "bodyweight": false,
+      "archived": false
+    },
+    "decline-plate-crunch": {
+      "id": "decline-plate-crunch",
+      "name": "Decline Plate Crunch",
+      "bodyweight": false,
+      "archived": false
+    },
+    "incline-barbell-bench-press": {
+      "id": "incline-barbell-bench-press",
+      "name": "Incline Barbell Bench Press",
+      "bodyweight": false,
+      "archived": false
+    },
+    "machine-shoulder-press": {
+      "id": "machine-shoulder-press",
+      "name": "Machine Shoulder Press",
+      "bodyweight": false,
+      "archived": false
+    },
+    "floor-reset-skullcrusher": {
+      "id": "floor-reset-skullcrusher",
+      "name": "Floor-Reset Skullcrusher",
+      "bodyweight": false,
+      "archived": false
+    },
+    "bent-over-cable-fly": {
+      "id": "bent-over-cable-fly",
+      "name": "Bent-Over Cable Fly",
+      "bodyweight": false,
+      "archived": false
+    },
+    "machine-lateral-raise": {
+      "id": "machine-lateral-raise",
+      "name": "Machine Lateral Raise",
+      "bodyweight": false,
+      "archived": false
+    },
+    "plate-front-raise": {
+      "id": "plate-front-raise",
+      "name": "Plate Front Raise",
+      "bodyweight": false,
+      "archived": false
+    },
+    "diamond-push-up": {
+      "id": "diamond-push-up",
+      "name": "Diamond Push-Up",
+      "bodyweight": true,
+      "archived": false
+    },
+    "half-kneeling-single-arm-lat-pulldown": {
+      "id": "half-kneeling-single-arm-lat-pulldown",
+      "name": "Half-Kneeling Single-Arm Lat Pulldown",
+      "bodyweight": false,
+      "archived": false
+    },
+    "pull-up": {
+      "id": "pull-up",
+      "name": "Pull-Up",
+      "bodyweight": true,
+      "archived": false
+    },
+    "kroc-row": {
+      "id": "kroc-row",
+      "name": "Kroc Row",
+      "bodyweight": false,
+      "archived": false
+    },
+    "cable-shrug-in": {
+      "id": "cable-shrug-in",
+      "name": "Cable Shrug-In",
+      "bodyweight": false,
+      "archived": false
+    },
+    "reverse-pec-deck": {
+      "id": "reverse-pec-deck",
+      "name": "Reverse Pec Deck",
+      "bodyweight": false,
+      "archived": false
+    },
+    "overhead-cable-biceps-curl": {
+      "id": "overhead-cable-biceps-curl",
+      "name": "Overhead Cable Biceps Curl",
+      "bodyweight": false,
+      "archived": false
+    },
+    "deadlift": {
+      "id": "deadlift",
+      "name": "Deadlift",
+      "bodyweight": false,
+      "archived": false
+    },
+    "stiff-leg-deadlift": {
+      "id": "stiff-leg-deadlift",
+      "name": "Stiff-Leg Deadlift",
+      "bodyweight": false,
+      "archived": false
+    },
+    "leg-press": {
+      "id": "leg-press",
+      "name": "Leg Press",
+      "bodyweight": false,
+      "archived": false
+    },
+    "glute-ham-raise": {
+      "id": "glute-ham-raise",
+      "name": "Glute-Ham Raise",
+      "bodyweight": true,
+      "archived": false
+    },
+    "slow-eccentric-leg-extension": {
+      "id": "slow-eccentric-leg-extension",
+      "name": "Slow-Eccentric Leg Extension",
+      "bodyweight": false,
+      "archived": false
+    },
+    "seated-calf-raise": {
+      "id": "seated-calf-raise",
+      "name": "Seated Calf Raise",
+      "bodyweight": false,
+      "archived": false
+    },
+    "roman-chair-leg-raise": {
+      "id": "roman-chair-leg-raise",
+      "name": "Roman Chair Leg Raise",
+      "bodyweight": true,
+      "archived": false
+    }
+  },
+  "programs": [
+    {
+      "id": "mtdz4k0izi7xfk",
+      "name": "Push / Pull / Legs",
+      "presetKey": "ppl6",
+      "days": [
+        {
+          "id": "mtdz4k0jbbampm",
+          "name": "Push 1",
+          "notes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic: arm circles × 10; cable external rotations × 10 per arm.",
+          "exercises": [
+            {
+              "id": "mtdz4k0j5d41ua",
+              "exerciseId": "barbell-bench-press",
+              "sets": 1,
+              "repLow": 3,
+              "repHigh": 5,
+              "restSec": 210,
+              "notes": "Ramp up in warm-up sets, then take one heavy top set of 3-5 reps."
+            },
+            {
+              "id": "mtdz4k0joy2bt6",
+              "exerciseId": "barbell-larsen-press",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 10,
+              "restSec": 180,
+              "notes": "Legs straight out on the floor. No leg drive."
+            },
+            {
+              "id": "mtdz4k0j7r4fbs",
+              "exerciseId": "standing-arnold-press",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 10,
+              "restSec": 150,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jvoxx1c",
+              "exerciseId": "press-around",
+              "sets": 2,
+              "repLow": 12,
+              "repHigh": 15,
+              "restSec": 30,
+              "notes": "Superset with Pec Stretch. Go straight into the stretch without resting."
+            },
+            {
+              "id": "mtdz4k0jss9cll",
+              "exerciseId": "pec-stretch",
+              "sets": 2,
+              "repLow": 30,
+              "repHigh": 30,
+              "restSec": 90,
+              "notes": "Closes the Press-Around superset. Log the hold in seconds: 30 sec. Rest after this one."
+            },
+            {
+              "id": "mtdz4k0jbyb6ow",
+              "exerciseId": "cross-body-cable-y-raise",
+              "sets": 3,
+              "repLow": 12,
+              "repHigh": 15,
+              "restSec": 90,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0j9bmvs0",
+              "exerciseId": "squeeze-only-triceps-pressdown",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 8,
+              "restSec": 30,
+              "notes": "Contracted half of the range only. Superset with Stretch-Only Overhead Triceps Extension. Go straight into it without resting."
+            },
+            {
+              "id": "mtdz4k0j37z6iz",
+              "exerciseId": "stretch-only-overhead-triceps-extension",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 8,
+              "restSec": 90,
+              "notes": "Stretched half of the range only. Closes the Squeeze-Only Triceps Pressdown superset. Rest after this one."
+            },
+            {
+              "id": "mtdz4k0jk12f6b",
+              "exerciseId": "cross-body-triceps-extension",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "mtdz4k0j8gpuqu",
+          "name": "Pull 1",
+          "notes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic: arm circles × 10; cable external rotations × 10 per arm.",
+          "exercises": [
+            {
+              "id": "mtdz4k0jyrlkbv",
+              "exerciseId": "lat-pulldown",
+              "sets": 5,
+              "repLow": 10,
+              "repHigh": 10,
+              "restSec": 150,
+              "notes": "Sets 1-4 are feeders, one step apart: set 1 at RPE 4-5; set 2 at RPE 6-7; set 3 at RPE 7-8; set 4 at RPE 10. Set 5 goes to failure, then drop the weight 30% and go again. Tap a set number to mark the feeders as warm-ups."
+            },
+            {
+              "id": "mtdz4k0jz4fbpy",
+              "exerciseId": "omni-grip-chest-supported-row",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 120,
+              "notes": "Use a different grip on each set."
+            },
+            {
+              "id": "mtdz4k0j1u654j",
+              "exerciseId": "bottom-half-dumbbell-pullover",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 30,
+              "notes": "Stretched half of the range only. Superset with Lat Stretch. Go straight into the stretch without resting."
+            },
+            {
+              "id": "mtdz4k0jun9k3y",
+              "exerciseId": "lat-stretch",
+              "sets": 2,
+              "repLow": 30,
+              "repHigh": 30,
+              "restSec": 30,
+              "notes": "Closes the Bottom-Half Dumbbell Pullover superset. Log the hold in seconds: 30 sec per side. Rest after this one, then start the pair again."
+            },
+            {
+              "id": "mtdz4k0jx1phh9",
+              "exerciseId": "omni-directional-cable-face-pull",
+              "sets": 3,
+              "repLow": 12,
+              "repHigh": 15,
+              "restSec": 90,
+              "notes": "Change the cable height each set: set 1 low to high; set 2 straight on; set 3 high to low."
+            },
+            {
+              "id": "mtdz4k0jc0bben",
+              "exerciseId": "ez-bar-biceps-curl",
+              "sets": 3,
+              "repLow": 6,
+              "repHigh": 8,
+              "restSec": 120,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jt6wvmz",
+              "exerciseId": "bottom-half-dumbbell-preacher-curl",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": "Stretched half of the range only."
+            }
+          ]
+        },
+        {
+          "id": "mtdz4k0juwlzmu",
+          "name": "Legs 1",
+          "notes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic (about 2 min): front-to-back leg swings; side-to-side leg swings; side-lying twists; step-throughs.",
+          "exercises": [
+            {
+              "id": "mtdz4k0jg7uzcg",
+              "exerciseId": "squat",
+              "sets": 4,
+              "repLow": 2,
+              "repHigh": 4,
+              "restSec": 210,
+              "notes": "Ramp first: 20% × 10; 35% × 5; 55% × 3; 70% × 2; 80% × 1. Working sets are 2-4 reps at 85-90% of your 1RM."
+            },
+            {
+              "id": "mtdz4k0jxrkz78",
+              "exerciseId": "paused-squat",
+              "sets": 2,
+              "repLow": 5,
+              "repHigh": 5,
+              "restSec": 180,
+              "notes": "75% of your working weight. Pause in the hole on every rep."
+            },
+            {
+              "id": "mtdz4k0j16n6fx",
+              "exerciseId": "romanian-deadlift",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 10,
+              "restSec": 150,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0j7e5h7a",
+              "exerciseId": "walking-lunge",
+              "sets": 2,
+              "repLow": 10,
+              "repHigh": 10,
+              "restSec": 120,
+              "notes": "10 reps per leg. Keep the depth on the last steps — do not cut them short."
+            },
+            {
+              "id": "mtdz4k0jgzre2x",
+              "exerciseId": "seated-leg-curl",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": "Change foot position each set: set 1 toes out; set 2 toes in; set 3 neutral."
+            },
+            {
+              "id": "mtdz4k0jr2j0ek",
+              "exerciseId": "leg-press-toe-press",
+              "sets": 4,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": "Change foot position each set: set 1 neutral; set 2 toes out; set 3 toes in; set 4 neutral."
+            },
+            {
+              "id": "mtdz4k0jlvkuur",
+              "exerciseId": "decline-plate-crunch",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 60,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "mtdz4k0j7f7teo",
+          "name": "Push 2",
+          "notes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic: general stretches.",
+          "exercises": [
+            {
+              "id": "mtdz4k0jzuhwwm",
+              "exerciseId": "incline-barbell-bench-press",
+              "sets": 3,
+              "repLow": 5,
+              "repHigh": 15,
+              "restSec": 180,
+              "notes": "Three warm-up sets first: 10 reps; 4 reps; 3 reps. Then set 1 moderate for 8; set 2 heavy for 5; set 3 light for 15."
+            },
+            {
+              "id": "mtdz4k0j57thqo",
+              "exerciseId": "machine-shoulder-press",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 120,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jfiyxlr",
+              "exerciseId": "floor-reset-skullcrusher",
+              "sets": 3,
+              "repLow": 6,
+              "repHigh": 8,
+              "restSec": 120,
+              "notes": "Rest the bar on the floor between reps."
+            },
+            {
+              "id": "mtdz4k0jzvpxa9",
+              "exerciseId": "bent-over-cable-fly",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jmqhog7",
+              "exerciseId": "machine-lateral-raise",
+              "sets": 3,
+              "repLow": 20,
+              "repHigh": 20,
+              "restSec": 90,
+              "notes": "Reps 1-5 with a slow negative; reps 6-20 with constant tension."
+            },
+            {
+              "id": "mtdz4k0jag5onn",
+              "exerciseId": "plate-front-raise",
+              "sets": 2,
+              "repLow": 15,
+              "repHigh": 20,
+              "restSec": 60,
+              "notes": "Rotate the plate inwards at the top."
+            },
+            {
+              "id": "mtdz4k0jgl3fpq",
+              "exerciseId": "diamond-push-up",
+              "sets": 1,
+              "repLow": 5,
+              "repHigh": 30,
+              "restSec": 60,
+              "notes": "AMRAP: one set to failure. The rep range is only a guide."
+            }
+          ]
+        },
+        {
+          "id": "mtdz4k0jxvpcdt",
+          "name": "Pull 2",
+          "notes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic: arm circles × 10; cable external rotations × 10 per arm.",
+          "exercises": [
+            {
+              "id": "mtdz4k0j4g0u6n",
+              "exerciseId": "half-kneeling-single-arm-lat-pulldown",
+              "sets": 3,
+              "repLow": 12,
+              "repHigh": 15,
+              "restSec": 120,
+              "notes": "12-15 reps per arm."
+            },
+            {
+              "id": "mtdz4k0j4izwv7",
+              "exerciseId": "pull-up",
+              "sets": 1,
+              "repLow": 5,
+              "repHigh": 30,
+              "restSec": 150,
+              "notes": "AMRAP: one set to failure. The rep range is only a guide."
+            },
+            {
+              "id": "mtdz4k0j80fkm6",
+              "exerciseId": "kroc-row",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 120,
+              "notes": "10-12 reps per arm."
+            },
+            {
+              "id": "mtdz4k0jjzberh",
+              "exerciseId": "cable-shrug-in",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jwu2aj3",
+              "exerciseId": "reverse-pec-deck",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jk9w8i2",
+              "exerciseId": "overhead-cable-biceps-curl",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 90,
+              "notes": ""
+            }
+          ]
+        },
+        {
+          "id": "mtdz4k0j6ge5r2",
+          "name": "Legs 2",
+          "notes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic (about 2 min): front-to-back leg swings; side-to-side leg swings; side-lying twists; step-throughs.",
+          "exercises": [
+            {
+              "id": "mtdz4k0jfa8m3y",
+              "exerciseId": "deadlift",
+              "sets": 1,
+              "repLow": 5,
+              "repHigh": 5,
+              "restSec": 240,
+              "notes": "Ramp first: 30% × 8; 50% × 4; 75% × 2; 90% × 1. Then take one working set of 5 reps."
+            },
+            {
+              "id": "mtdz4k0jti7oj0",
+              "exerciseId": "stiff-leg-deadlift",
+              "sets": 2,
+              "repLow": 8,
+              "repHigh": 8,
+              "restSec": 180,
+              "notes": "50-60% of your Deadlift working weight."
+            },
+            {
+              "id": "mtdz4k0jpdecqx",
+              "exerciseId": "leg-press",
+              "sets": 4,
+              "repLow": 10,
+              "repHigh": 12,
+              "restSec": 150,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jbyzbm5",
+              "exerciseId": "glute-ham-raise",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 10,
+              "restSec": 120,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0jm695q8",
+              "exerciseId": "slow-eccentric-leg-extension",
+              "sets": 3,
+              "repLow": 8,
+              "repHigh": 10,
+              "restSec": 90,
+              "notes": "Lower slowly on every rep."
+            },
+            {
+              "id": "mtdz4k0jdzlk24",
+              "exerciseId": "seated-calf-raise",
+              "sets": 4,
+              "repLow": 15,
+              "repHigh": 20,
+              "restSec": 90,
+              "notes": ""
+            },
+            {
+              "id": "mtdz4k0j1aa91s",
+              "exerciseId": "roman-chair-leg-raise",
+              "sets": 3,
+              "repLow": 10,
+              "repHigh": 20,
+              "restSec": 60,
+              "notes": ""
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "activeProgramId": "mtdz4k0izi7xfk",
+  "sessions": [
+    {
+      "id": "v2sess3",
+      "programId": "mtdz4k0izi7xfk",
+      "dayId": "mtdz4k0jbbampm",
+      "dayName": "Push 1",
+      "dayNotes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic: arm circles × 10; cable external rotations × 10 per arm.",
+      "startedAt": 1787202157268,
+      "finishedAt": 1787205757268,
+      "notes": "felt fine",
+      "exercises": [
+        {
+          "id": "v2e0",
+          "exerciseId": "barbell-bench-press",
+          "name": "Barbell Bench Press",
+          "repLow": 6,
+          "repHigh": 10,
+          "restSec": 180,
+          "notes": "Ramp up in warm-up sets, then take one heavy top set of 3-5 reps.",
+          "sets": [
+            {
+              "id": "s1",
+              "weight": 40,
+              "reps": 8,
+              "done": true,
+              "warmup": true,
+              "completedAt": 1787202757268
+            },
+            {
+              "id": "s2",
+              "weight": 80,
+              "reps": 8,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787203357268
+            },
+            {
+              "id": "s3",
+              "weight": 80,
+              "reps": 8,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787203657268
+            }
+          ]
+        },
+        {
+          "id": "v2e4",
+          "exerciseId": "pull-up",
+          "name": "Pull-Up",
+          "repLow": 5,
+          "repHigh": 12,
+          "restSec": 150,
+          "notes": "",
+          "sets": [
+            {
+              "id": "s5",
+              "weight": null,
+              "reps": 8,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787204557268
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "v2sess2",
+      "programId": "mtdz4k0izi7xfk",
+      "dayId": "mtdz4k0jbbampm",
+      "dayName": "Push 1",
+      "dayNotes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic: arm circles × 10; cable external rotations × 10 per arm.",
+      "startedAt": 1787461357268,
+      "finishedAt": 1787464957268,
+      "notes": "felt fine",
+      "exercises": [
+        {
+          "id": "v2e6",
+          "exerciseId": "barbell-bench-press",
+          "name": "Barbell Bench Press",
+          "repLow": 6,
+          "repHigh": 10,
+          "restSec": 180,
+          "notes": "Ramp up in warm-up sets, then take one heavy top set of 3-5 reps.",
+          "sets": [
+            {
+              "id": "s7",
+              "weight": 40,
+              "reps": 8,
+              "done": true,
+              "warmup": true,
+              "completedAt": 1787461957268
+            },
+            {
+              "id": "s8",
+              "weight": 82.5,
+              "reps": 8,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787462557268
+            },
+            {
+              "id": "s9",
+              "weight": 82.5,
+              "reps": 8,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787462857268
+            }
+          ]
+        },
+        {
+          "id": "v2e10",
+          "exerciseId": "pull-up",
+          "name": "Pull-Up",
+          "repLow": 5,
+          "repHigh": 12,
+          "restSec": 150,
+          "notes": "",
+          "sets": [
+            {
+              "id": "s11",
+              "weight": null,
+              "reps": 9,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787463757268
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "v2sess1",
+      "programId": "mtdz4k0izi7xfk",
+      "dayId": "mtdz4k0jbbampm",
+      "dayName": "Push 1",
+      "dayNotes": "General: 5-10 min on the treadmill or Stairmaster.\nDynamic: arm circles × 10; cable external rotations × 10 per arm.",
+      "startedAt": 1787720557268,
+      "finishedAt": 1787724157268,
+      "notes": "felt fine",
+      "exercises": [
+        {
+          "id": "v2e12",
+          "exerciseId": "barbell-bench-press",
+          "name": "Barbell Bench Press",
+          "repLow": 6,
+          "repHigh": 10,
+          "restSec": 180,
+          "notes": "Ramp up in warm-up sets, then take one heavy top set of 3-5 reps.",
+          "sets": [
+            {
+              "id": "s13",
+              "weight": 40,
+              "reps": 8,
+              "done": true,
+              "warmup": true,
+              "completedAt": 1787721157268
+            },
+            {
+              "id": "s14",
+              "weight": 85,
+              "reps": 8,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787721757268
+            },
+            {
+              "id": "s15",
+              "weight": 85,
+              "reps": 8,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787722057268
+            }
+          ]
+        },
+        {
+          "id": "v2e16",
+          "exerciseId": "pull-up",
+          "name": "Pull-Up",
+          "repLow": 5,
+          "repHigh": 12,
+          "restSec": 150,
+          "notes": "",
+          "sets": [
+            {
+              "id": "s17",
+              "weight": null,
+              "reps": 10,
+              "done": true,
+              "warmup": false,
+              "completedAt": 1787722957268
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "activeSessionId": null,
+  "rest": null,
+  "sleep": [
+    {
+      "id": "v2n1",
+      "night": "2026-08-27",
+      "asleepMin": 432,
+      "inBedMin": 470,
+      "source": "health"
+    },
+    {
+      "id": "v2n2",
+      "night": "2026-08-28",
+      "asleepMin": 465,
+      "inBedMin": null,
+      "source": "manual"
+    }
+  ],
+  "settings": {
+    "unit": "kg",
+    "defaultRestSec": 150,
+    "autoStartTimer": true,
+    "weightStep": 2.5,
+    "tickSound": true
+  }
+}
