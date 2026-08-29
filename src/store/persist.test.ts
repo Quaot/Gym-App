@@ -107,3 +107,50 @@ describe('attachPersistence', () => {
     detach()
   })
 })
+
+describe('the v3 to v4 upgrade on real storage', () => {
+  it('boots a stored v3 profile into ten days and retires the old keys', () => {
+    const fresh = freshState()
+    const six = fresh.programs[0].days.filter((d) =>
+      ['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2'].includes(d.name),
+    )
+    localStorage.setItem('gym:v3:core', JSON.stringify({
+      version: 3,
+      catalog: fresh.catalog,
+      programs: [{ ...fresh.programs[0], days: six }],
+      activeProgramId: fresh.programs[0].id,
+      activeSessionId: null,
+      settings: fresh.settings,
+    }))
+    localStorage.setItem('gym:v3:sessions', JSON.stringify([]))
+
+    const state = loadInitialState()
+    expect(state.programs[0].days).toHaveLength(10)
+    expect(state.version).toBe(SCHEMA_VERSION)
+    expect(localStorage.getItem('gym:v3:core')).toBeNull()
+    expect(localStorage.getItem(KEYS.core)).not.toBeNull()
+
+    // Second boot reads v4 and must not insert the days again.
+    expect(loadInitialState().programs[0].days).toHaveLength(10)
+  })
+
+  it('leaves an edited v3 program at six days and still retires the keys', () => {
+    const fresh = freshState()
+    const six = fresh.programs[0].days
+      .filter((d) => ['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2'].includes(d.name))
+      .map((d, i) => (i === 0 ? { ...d, name: 'Chest Day' } : d))
+    localStorage.setItem('gym:v3:core', JSON.stringify({
+      version: 3,
+      catalog: fresh.catalog,
+      programs: [{ ...fresh.programs[0], days: six }],
+      activeProgramId: fresh.programs[0].id,
+      activeSessionId: null,
+      settings: fresh.settings,
+    }))
+
+    const state = loadInitialState()
+    expect(state.programs[0].days).toHaveLength(6)
+    expect(state.programs[0].days[0].name).toBe('Chest Day')
+    expect(localStorage.getItem('gym:v3:core')).toBeNull()
+  })
+})

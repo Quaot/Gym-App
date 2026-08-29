@@ -1,17 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { AppState, Session, SessionExercise } from '../types'
 import { useAppSelector, dispatch, getStore } from '../store/store'
 import { act } from '../store/actions'
 import { switchTab } from '../lib/router'
 import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
-import { Screen } from '../app/Screen'
+import { Screen, forgetScroll } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
-import { fmtClock, fmtWeight } from '../lib/util'
+import { fmtClock, fmtWeight, uid } from '../lib/util'
 import { prefillFor } from '../lib/prefill'
+import { reconcileWarmups } from '../lib/warmups'
+import { PLATES_KG, PLATES_LB, describePlates, platesFor } from '../lib/plates'
 import { suggestionFor } from '../lib/suggest'
 import { InfoPopover } from '../components/InfoPopover'
-import { lastPerformance, workingSets, sessionDoneSetCount } from '../lib/history'
+import {
+  lastPerformance, recordsIn, sessionDoneSetCount, sessionVolume, workingSets,
+} from '../lib/history'
 import { restBefore } from '../lib/timing'
 import { useNow } from '../lib/useNow'
 
@@ -49,6 +53,16 @@ const SetRow = ({
   const reps = set.reps ?? fill.reps
   const isGhost = set.weight === null && set.reps === null && !set.done
 
+  // What to hang on the bar, for the movements that use one.
+  const equipment = catalog[exercise.exerciseId]?.equipment
+  const plates = useMemo(
+    () =>
+      equipment === 'barbell' && weight !== null
+        ? platesFor(weight, settings.barWeight, settings.unit === 'kg' ? PLATES_KG : PLATES_LB)
+        : null,
+    [equipment, weight, settings.barWeight, settings.unit],
+  )
+
   if (!active) {
     return (
       <button
@@ -79,6 +93,10 @@ const SetRow = ({
   }
 
   const bodyweight = catalog[exercise.exerciseId]?.bodyweight ?? false
+  // The grid the tape snaps to is the one this movement actually loads on, so
+  // a warm-up computed on the same grid can never read back as a different
+  // number than it holds.
+  const weightStep = catalog[exercise.exerciseId]?.increment ?? settings.weightStep
   const { reason } = suggestionFor({ sessions, settings, catalog }, exercise, session.id)
 
   return (
@@ -108,6 +126,14 @@ const SetRow = ({
         )}
       </div>
 
+      {plates && (
+        <div className="plates num" aria-label="Plates per side">
+          <span className="label-3">{settings.barWeight} bar</span>
+          {plates.perSide.length > 0 && <span className="plate-list">{describePlates(plates.perSide)}</span>}
+          <span className="label-3">per side</span>
+        </div>
+      )}
+
       {!bodyweight && (
         <TapeInput
           label="Weight"
@@ -116,8 +142,8 @@ const SetRow = ({
           ghost={fill.weight ?? 0}
           min={0}
           max={500}
-          step={settings.weightStep}
-          majorEvery={Math.max(1, Math.round(10 / settings.weightStep))}
+          step={weightStep}
+          majorEvery={Math.max(1, Math.round(10 / weightStep))}
           decimal
           tickSound={settings.tickSound}
           format={(v) => fmtWeight(v) || '0'}
@@ -170,6 +196,8 @@ const ExerciseCard = ({
 }) => {
   const unit = useAppSelector((s) => s.settings.unit)
   const sessions = useAppSelector((s) => s.sessions)
+  const catalog = useAppSelector((s) => s.catalog)
+  const settings = useAppSelector((s) => s.settings)
   const [menu, setMenu] = useState(false)
   const [confirmDeleteSet, setConfirmDeleteSet] = useState<string | null>(null)
 
@@ -177,6 +205,65 @@ const ExerciseCard = ({
     () => lastPerformance(sessions, exercise.exerciseId, session.id),
     [sessions, exercise.exerciseId, session.id],
   )
+
+  // A record is worth knowing about the moment you set it.
+  const record = useMemo(
+    () => recordsIn({ sessions, catalog }, session).get(exercise.id) ?? null,
+    [sessions, catalog, session, exercise.id],
+  )
+
+  /**
+   * The ramp follows the weight you are about to lift. It comes from the first
+   * working set, whether that is the coaching suggestion, last session, or a
+   * weight you just dialled in yourself. That is what makes a warm-up appear
+   * on a movement's very first session, when there is no history to build one
+   * from at the moment the workout starts.
+   */
+  const increment = catalog[exercise.exerciseId]?.increment ?? settings.weightStep
+  const plannedWeight = useMemo(() => {
+    const firstWorking = exercise.sets.find((x) => !x.warmup)
+    if (firstWorking?.weight != null) return firstWorking.weight
+    const index = exercise.sets.findIndex((x) => !x.warmup)
+    if (index < 0) return null
+    return prefillFor(
+      { sessions, settings, catalog },
+      session,
+      exercise,
+      index,
+    ).weight
+  }, [exercise, session, sessions, settings, catalog])
+
+  /**
+   * Rows this screen generated, so an edit can be told from a regeneration.
+   * The moment you change a warm-up by hand the ramp stops following the
+   * working weight: it is yours now, and overwriting it would be rude.
+   */
+  const generated = useRef(new Map<string, { weight: number | null; reps: number | null }>())
+  const rampIsYours = useRef(false)
+
+  useEffect(() => {
+    if (exercise.warmupPlan.length === 0 || rampIsYours.current) return
+
+    for (const row of exercise.sets) {
+      if (!row.warmup || row.done) continue
+      const mine = generated.current.get(row.id)
+      if (mine && (mine.weight !== row.weight || mine.reps !== row.reps)) {
+        rampIsYours.current = true
+        return
+      }
+    }
+
+    const next = reconcileWarmups(
+      exercise.sets, exercise.warmupPlan, plannedWeight, increment, uid,
+    )
+    // Record either way. Rows that already match the plan are generated rows
+    // too, whether this screen built them or the workout did at its start.
+    generated.current = new Map(
+      next.filter((x) => x.warmup && !x.done).map((x) => [x.id, { weight: x.weight, reps: x.reps }]),
+    )
+    if (next === exercise.sets) return
+    dispatch({ type: 'setSets', exId: exercise.id, sets: next })
+  }, [exercise, plannedWeight, increment])
 
   const target = exercise.repLow === exercise.repHigh
     ? `${exercise.sets.length} × ${exercise.repLow}`
@@ -202,6 +289,11 @@ const ExerciseCard = ({
     <section className="card ex-card">
       <div className="ex-head">
         <span className="ex-name">{exercise.name}</span>
+        {record && (
+          <span className="pill record" title="Personal record">
+            PR
+          </span>
+        )}
         <span className="pill num">{target}</span>
         <button className="btn-plain" aria-label={`Options for ${exercise.name}`} onClick={() => setMenu(true)}>
           ⋯
@@ -303,13 +395,71 @@ const ExerciseCard = ({
 }
 
 /* ------------------------------------------------------------------ *
+ *  What the workout came to: the one moment worth pausing on.
+ * ------------------------------------------------------------------ */
+const Summary = ({ session }: { session: Session }) => {
+  const sessions = useAppSelector((s) => s.sessions)
+  const catalog = useAppSelector((s) => s.catalog)
+  const unit = useAppSelector((s) => s.settings.unit)
+
+  const sets = sessionDoneSetCount(session)
+  const volume = Math.round(sessionVolume(session))
+  const minutes = Math.round((Date.now() - session.startedAt) / 60000)
+  const records = useMemo(
+    () => [...recordsIn({ sessions, catalog }, session).entries()],
+    [sessions, catalog, session],
+  )
+
+  return (
+    <div className="summary">
+      <div className="stat-row">
+        <div className="stat">
+          <div className="label">Time</div>
+          <div className="value num">{minutes}<span className="unit">min</span></div>
+        </div>
+        <div className="stat">
+          <div className="label">Sets</div>
+          <div className="value num">{sets}</div>
+        </div>
+        <div className="stat">
+          <div className="label">Volume</div>
+          <div className="value num">
+            {volume.toLocaleString()}<span className="unit">{unit}</span>
+          </div>
+        </div>
+      </div>
+      {records.length > 0 && (
+        <div className="records">
+          {records.map(([exId, r]) => {
+            const name = session.exercises.find((e) => e.id === exId)?.name ?? 'Exercise'
+            return (
+              <div className="record-line" key={exId}>
+                <span className="pill record">PR</span>
+                <span className="grow">{name}</span>
+                <span className="num">
+                  {r.set.weight !== null
+                    ? `${fmtWeight(r.set.weight)} ${unit} × ${r.set.reps}`
+                    : `${r.set.reps} reps`}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ------------------------------------------------------------------ *
  *  Header clock: isolated so only this ticks every second.
  * ------------------------------------------------------------------ */
-const LiveDuration = ({ startedAt, sets }: { startedAt: number; sets: number }) => {
+const LiveDuration = ({
+  startedAt, sets, planned,
+}: { startedAt: number; sets: number; planned: number }) => {
   const now = useNow(1000)
   return (
     <span className="num">
-      {fmtClock((now - startedAt) / 1000)} · {sets} {sets === 1 ? 'set' : 'sets'} done
+      {fmtClock((now - startedAt) / 1000)} · {sets} of {planned} sets
     </span>
   )
 }
@@ -326,9 +476,9 @@ const AddExerciseSheet = ({ onClose }: { onClose: () => void }) => {
     [catalog],
   )
   const query = name.trim().toLowerCase()
-  const matches = query
-    ? names.filter((n) => n.toLowerCase().includes(query)).slice(0, 6)
-    : []
+  // With nothing typed the list is browsable rather than empty, since you do
+  // not always know what a movement is called in here.
+  const matches = (query ? names.filter((n) => n.toLowerCase().includes(query)) : names).slice(0, 8)
 
   const add = (chosen: string) => {
     if (!chosen.trim()) return
@@ -374,12 +524,14 @@ export const SessionScreen = () => {
 
   if (!session) return null
   const done = sessionDoneSetCount(session)
+  // Warm-ups count: they are sets you have to do to get through the workout.
+  const planned = session.exercises.reduce((n, e) => n + e.sets.length, 0)
 
   return (
     <Screen
-      id="session"
+      id={`session/${session.id}`}
       title={session.dayName}
-      subtitle={<LiveDuration startedAt={session.startedAt} sets={done} />}
+      subtitle={<LiveDuration startedAt={session.startedAt} sets={done} planned={planned} />}
       centerTitle
       leading={<button className="btn-plain danger" onClick={() => setCancelling(true)}>Cancel</button>}
       trailing={<button className="btn-plain strong" onClick={() => setFinishing(true)}>Finish</button>}
@@ -429,7 +581,11 @@ export const SessionScreen = () => {
                 : 'Nothing is logged yet'}
             </p>
             <button className="btn-tinted destructive block"
-              onClick={() => { dispatch({ type: 'discardActiveSession' }); switchTab('/') }}>
+              onClick={() => {
+                forgetScroll(`session/${session.id}`)
+                dispatch({ type: 'discardActiveSession' })
+                switchTab('/')
+              }}>
               Cancel workout
             </button>
             <button className="btn-gray block" onClick={() => setCancelling(false)}>
@@ -442,6 +598,7 @@ export const SessionScreen = () => {
       {finishing && (
         <Sheet title="Finish workout?" onClose={() => setFinishing(false)}>
           <div className="stack">
+            <Summary session={session} />
             <p className="t-footnote label-2">
               {done > 0
                 ? `Saves ${done} ${done === 1 ? 'set' : 'sets'} and drops the empty rows`
@@ -449,7 +606,11 @@ export const SessionScreen = () => {
             </p>
             <button
               className="btn-filled block" disabled={done === 0}
-              onClick={() => { act.finishSession(); switchTab('/') }}
+              onClick={() => {
+                forgetScroll(`session/${session.id}`)
+                act.finishSession()
+                switchTab('/')
+              }}
             >
               Save workout
             </button>

@@ -19,7 +19,9 @@ export const RestBar = () => {
     s.sessions.find((x) => x.id === s.activeSessionId) ?? null,
   )
   const route = useRoute()
-  const now = useNow(rest ? 250 : 5000)
+  // A clock that jumps five seconds at a time reads as broken, so it ticks
+  // every second whenever one is on screen.
+  const now = useNow(rest ? 250 : 1000)
 
   // A workout should never be interrupted by the screen going dark.
   useWakeLock(activeSession !== null)

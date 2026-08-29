@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useAppSelector, dispatch } from '../store/store'
-import { navigate } from '../lib/router'
+import { navigate, replaceRoute } from '../lib/router'
 import { Sheet } from '../components/Sheet'
 import { Screen } from '../app/Screen'
 import { BackButton } from '../app/BackButton'
@@ -135,7 +135,7 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
           <div className="stack">
             <p className="t-footnote label-2">This cannot be undone</p>
             <button className="btn-tinted destructive block"
-              onClick={() => { dispatch({ type: 'deleteSession', sessionId }); navigate('/history') }}>
+              onClick={() => { dispatch({ type: 'deleteSession', sessionId }); replaceRoute('/history') }}>
               Delete
             </button>
             <button className="btn-gray block" onClick={() => setConfirm(false)}>Cancel</button>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { warmupRows } from './warmups'
+import type { LoggedSet } from '../types'
+import { reconcileWarmups, warmupRows } from './warmups'
 
 const HEAVY = [
   { pct: 0.5, reps: 6 },
@@ -53,5 +54,81 @@ describe('warmupRows', () => {
 
   it('carries the prescribed reps through untouched', () => {
     expect(warmupRows(HEAVY, 315, 5).map((r) => r.reps)).toEqual([6, 4, 2, 1])
+  })
+})
+
+describe('reconcileWarmups', () => {
+  const plan = [{ pct: 0.5, reps: 6 }, { pct: 0.7, reps: 4 }, { pct: 0.85, reps: 2 }]
+  let n = 0
+  const makeId = () => `new-${++n}`
+  const working = (over: Partial<LoggedSet> = {}): LoggedSet => ({
+    id: 'w1', weight: null, reps: null, done: false, warmup: false, completedAt: null, ...over,
+  })
+
+  it('builds the ramp the moment a working weight is known', () => {
+    const out = reconcileWarmups([working()], plan, 200, 5, makeId)
+    expect(out.filter((s) => s.warmup).map((s) => [s.weight, s.reps])).toEqual([
+      [100, 6], [140, 4], [170, 2],
+    ])
+    expect(out[out.length - 1].warmup).toBe(false)
+  })
+
+  it('moves the whole ramp when the working weight changes', () => {
+    const first = reconcileWarmups([working()], plan, 200, 5, makeId)
+    const second = reconcileWarmups(first, plan, 100, 5, makeId)
+    expect(second.filter((s) => s.warmup).map((s) => s.weight)).toEqual([50, 70, 85])
+  })
+
+  it('never touches a warm-up already logged', () => {
+    const logged: LoggedSet = {
+      id: 'done-1', weight: 100, reps: 6, done: true, warmup: true, completedAt: 5,
+    }
+    const out = reconcileWarmups([logged, working()], plan, 300, 5, makeId)
+    expect(out[0]).toBe(logged)
+    // The logged row counts against the plan, so only what is left is built.
+    expect(out.filter((s) => s.warmup && !s.done).map((s) => s.weight)).toEqual([210, 255])
+  })
+
+  it('keeps row identity when nothing has to change', () => {
+    const first = reconcileWarmups([working()], plan, 200, 5, makeId)
+    expect(reconcileWarmups(first, plan, 200, 5, makeId)).toBe(first)
+  })
+
+  it('clears the ramp when the working weight goes away', () => {
+    const first = reconcileWarmups([working()], plan, 200, 5, makeId)
+    const cleared = reconcileWarmups(first, plan, null, 5, makeId)
+    expect(cleared.some((s) => s.warmup)).toBe(false)
+    expect(cleared).toHaveLength(1)
+  })
+
+  it('leaves an exercise with no scheme alone', () => {
+    const sets = [working()]
+    expect(reconcileWarmups(sets, [], 200, 5, makeId)).toBe(sets)
+  })
+
+  it('keeps working sets in order behind the ramp', () => {
+    const sets = [working({ id: 'a' }), working({ id: 'b' }), working({ id: 'c' })]
+    const out = reconcileWarmups(sets, plan, 100, 5, makeId)
+    expect(out.filter((s) => !s.warmup).map((s) => s.id)).toEqual(['a', 'b', 'c'])
+  })
+})
+
+describe('a warm-up you changed by hand', () => {
+  const plan = [{ pct: 0.5, reps: 6 }, { pct: 0.7, reps: 4 }]
+  const makeId = () => 'x'
+
+  it('is what the reconciler would overwrite, so the screen has to notice', () => {
+    // The rule the session screen enforces: once a pending row stops matching
+    // what was generated, the ramp belongs to the user and stops following.
+    const built = reconcileWarmups(
+      [{ id: 'w', weight: null, reps: null, done: false, warmup: false, completedAt: null }],
+      plan, 200, 5, makeId,
+    )
+    const edited = built.map((s) => (s.warmup && s.weight === 100 ? { ...s, weight: 115 } : s))
+    const wouldRevert = reconcileWarmups(edited, plan, 200, 5, makeId)
+    expect(wouldRevert.find((s) => s.warmup)!.weight).toBe(100)
+    // Which is exactly why the screen compares against what it generated
+    // before it dispatches.
+    expect(edited.find((s) => s.warmup)!.weight).toBe(115)
   })
 })
