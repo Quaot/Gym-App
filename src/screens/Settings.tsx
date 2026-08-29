@@ -156,7 +156,7 @@ export const SettingsScreen = () => {
         <div className="section-header">Sample data</div>
         <div className="group stack" style={{ padding: 14 }}>
           <p className="t-caption label-3">
-            Twelve weeks of realistic workouts and sleep, for trying the app out
+            Sixteen weeks of realistic workouts and sleep, for trying the app out
           </p>
           <button className="btn-gray block"
             onClick={() => {

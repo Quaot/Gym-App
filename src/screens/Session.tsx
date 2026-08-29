@@ -5,12 +5,13 @@ import { act } from '../store/actions'
 import { switchTab } from '../lib/router'
 import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
-import { Screen, forgetScroll } from '../app/Screen'
+import { Screen, forgetScroll, revealAboveBars } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
 import { fmtClock, fmtWeight, uid } from '../lib/util'
 import { prefillFor } from '../lib/prefill'
 import { reconcileWarmups } from '../lib/warmups'
 import { PLATES_KG, PLATES_LB, describePlates, platesFor } from '../lib/plates'
+import { PlateBar } from '../components/PlateBar'
 import { suggestionFor } from '../lib/suggest'
 import { InfoPopover } from '../components/InfoPopover'
 import {
@@ -38,11 +39,17 @@ const SetRow = ({
   const settings = useAppSelector((s) => s.settings)
   const sessions = useAppSelector((s) => s.sessions)
   const catalog = useAppSelector((s) => s.catalog)
+  const editorRef = useRef<HTMLDivElement | null>(null)
   const set = exercise.sets[index]
   const fill = useMemo(
     () => prefillFor({ sessions, settings, catalog }, session, exercise, index),
     [sessions, settings, catalog, session, exercise, index],
   )
+
+  // An editor that opens under the tab bar may as well not have opened.
+  useEffect(() => {
+    if (active) revealAboveBars(editorRef.current)
+  }, [active])
 
   const displayOrdinal = set.warmup
     ? 'W'
@@ -100,7 +107,7 @@ const SetRow = ({
   const { reason } = suggestionFor({ sessions, settings, catalog }, exercise, session.id)
 
   return (
-    <div className="set-editor">
+    <div className="set-editor" ref={editorRef}>
       <div className="row" style={{ marginBottom: 4 }}>
         <button
           className={`pill${set.warmup ? ' warm' : ''}`}
@@ -127,10 +134,15 @@ const SetRow = ({
       </div>
 
       {plates && (
-        <div className="plates num" aria-label="Plates per side">
-          <span className="label-3">{settings.barWeight} bar</span>
-          {plates.perSide.length > 0 && <span className="plate-list">{describePlates(plates.perSide)}</span>}
-          <span className="label-3">per side</span>
+        <div className="plates-block">
+          <PlateBar load={plates} unit={settings.unit} bar={settings.barWeight} />
+          <div className="plates num">
+            <span className="label-3">{settings.barWeight} bar</span>
+            {plates.perSide.length > 0 && (
+              <span className="plate-list">{describePlates(plates.perSide)}</span>
+            )}
+            <span className="label-3">per side</span>
+          </div>
         </div>
       )}
 
