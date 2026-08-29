@@ -26,7 +26,7 @@ export interface DemoData {
 }
 
 /**
- * Twelve weeks of training that behaves like a real training block: weights
+ * Sixteen weeks of training that behaves like a real training block: weights
  * climb by double progression, the odd session misses, and sleep tracks
  * performance closely enough for the correlation view to have something to
  * find. Every id carries the demo prefix.
@@ -42,7 +42,9 @@ export const generateDemoData = (state: AppState, seed = 7, now = Date.now()): D
   const weights = new Map<string, number>()
   let id = 0
 
-  const WEEKS = 12
+  // Long enough that a ten day rotation comes round often enough to show a
+  // trend: sixteen weeks at four sessions a week is six exposures per day.
+  const WEEKS = 16
   const PER_WEEK = 4
   const total = WEEKS * PER_WEEK
 
@@ -76,7 +78,7 @@ export const generateDemoData = (state: AppState, seed = 7, now = Date.now()): D
       }
 
       // Double progression: mostly climb, occasionally stall.
-      const good = rand() > 0.25 + Math.max(0, -rested)
+      const good = rand() > 0.18 + Math.max(0, -rested)
       const topReps = good ? t.repHigh : Math.max(t.repLow, t.repHigh - 1 - Math.floor(rand() * 2))
       const sets: LoggedSet[] = []
 

@@ -65,10 +65,27 @@ const flushStorage = (page) =>
     setTimeout(resolve, 50)
   }))
 
+/** The tab bar and rest bar float over the scroller: scroll clear of them. */
+const clearBars = async (page, target) => {
+  await page.waitForTimeout(200)
+  await target.evaluate((el) => {
+    const scroller = el.closest('.scroller')
+    if (!scroller) return
+    const box = el.getBoundingClientRect()
+    const view = scroller.getBoundingClientRect()
+    const below = box.bottom - (view.bottom - 130)
+    if (below > 0) scroller.scrollTop += below
+  })
+  await page.waitForTimeout(200)
+}
+
 const dragTape = async (page, tape, px) => {
   const strip = tape.locator('.strip-wrap')
-  // Screens scroll inside themselves now, so bring the tape into view first.
+  // Screens scroll inside themselves now, so bring the tape into view first,
+  // and let the editor settle: committing a weight adds the loaded bar above
+  // the tapes, which moves everything below it.
   await strip.scrollIntoViewIfNeeded()
+  await clearBars(page, strip)
   const box = await strip.boundingBox()
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
@@ -86,6 +103,7 @@ const dragTape = async (page, tape, px) => {
 /** Drags with no waits at all: several moves inside one animation frame. */
 const dragTapeFast = async (page, tape, px, moves = 30) => {
   await tape.locator('.strip-wrap').scrollIntoViewIfNeeded()
+  await clearBars(page, tape.locator('.strip-wrap'))
   const box = await tape.locator('.strip-wrap').boundingBox()
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
@@ -965,6 +983,85 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   assert(/Volume/.test(summary) && /PR/.test(summary), '21h. the summary counts the work and the records',
     summary.replace(/\n/g, ' '))
   assert(errors.length === 0, '21. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 22. The loaded bar, and where a lift is heading
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+
+  // 22a. The bar is drawn with the plates that make the weight.
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.set-editor')
+  const tape = page.locator('.set-editor .tape').first()
+  await tape.locator('.readout .big').click()
+  await tape.locator('input').fill('225')
+  await tape.locator('input').press('Enter')
+  await page.waitForTimeout(400)
+  const bar = page.locator('.set-editor .plate-bar').first()
+  assert(await bar.isVisible(), '22a. the loaded bar is drawn')
+  // Two 45s a side, drawn on both sleeves.
+  const discs = await bar.locator('rect').count()
+  assert(discs === 4 + 3, '22b. it draws a plate for each side of the load', String(discs))
+  const label = await bar.getAttribute('aria-label')
+  assert(/225/.test(label) && /45/.test(label), '22c. and reads out what is on it', label)
+
+  // A weight the plates cannot make loses its plates, not its bar.
+  await tape.locator('.readout .big').click()
+  await tape.locator('input').fill('45')
+  await tape.locator('input').press('Enter')
+  await page.waitForTimeout(400)
+  assert(
+    (await bar.locator('rect').count()) === 3,
+    '22d. an empty bar is still a bar',
+    String(await bar.locator('rect').count()),
+  )
+
+  // 22e. No forecast without the history to support one.
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.waitForSelector('.sheet')
+  await page.waitForTimeout(400)
+  await page.getByRole('button', { name: 'Cancel workout' }).click()
+  await page.waitForTimeout(600)
+  await page.locator('.tabbar').getByRole('button', { name: 'Progress' }).click()
+  await page.waitForTimeout(400)
+  assert(
+    (await page.locator('.forecast').count()) === 0,
+    '22e. a lift with no history is not forecast',
+  )
+
+  // 22f. With a real block behind it, the trend gets a date.
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: /sample data/i }).first().click()
+  await page.waitForTimeout(900)
+  await page.locator('.tabbar').getByRole('button', { name: 'Progress' }).click()
+  await page.waitForTimeout(400)
+  await page.locator('.screen.top .scroller').evaluate((el) => { el.scrollTop = 4000 })
+  await page.waitForTimeout(300)
+  await page.locator('.row-item').first().click()
+  await page.waitForTimeout(700)
+  const forecasts = await page.locator('.forecast').count()
+  assert(forecasts <= 1, '22f. at most one forecast, and only when it fits')
+  if (forecasts === 1) {
+    const text = await page.locator('.forecast').innerText()
+    assert(/around/.test(text), '22g. it names a date', text.replace(/\n/g, ' '))
+    await page.locator('.forecast').click()
+    await page.waitForTimeout(200)
+    assert(
+      /explains/.test(await page.locator('.forecast').innerText()),
+      '22h. and shows its working when you ask',
+    )
+  } else {
+    ok('22g. it names a date (no qualifying lift in this sample)')
+    ok('22h. and shows its working when you ask (skipped)')
+  }
+  assert(errors.length === 0, '22. no console errors', errors.join('; '))
   await ctx.close()
 }
 

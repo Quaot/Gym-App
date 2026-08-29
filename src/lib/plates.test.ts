@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PLATES_KG, PLATES_LB, describePlates, platesFor } from './plates'
+import { PLATES_KG, PLATES_LB, barLayout, describePlates, plateStyle, platesFor } from './plates'
 
 describe('platesFor', () => {
   it('loads a bench of 185 the way anyone would', () => {
@@ -53,5 +53,36 @@ describe('describePlates', () => {
 
   it('says nothing for an empty bar', () => {
     expect(describePlates([])).toBe('')
+  })
+})
+
+describe('how the bar is drawn', () => {
+  it('uses the colour code a lifter already reads', () => {
+    expect(plateStyle(45, 'lb').color).toBe('#2b6cff')
+    expect(plateStyle(25, 'kg').color).toBe('#ff453a')
+    expect(plateStyle(20, 'kg').color).toBe('#2b6cff')
+  })
+
+  it('falls back to grey for a plate outside the set', () => {
+    expect(plateStyle(3.75, 'lb').color).toBe('#8e8e93')
+  })
+
+  it('draws heavier plates bigger, and never draws one too small to see', () => {
+    const heavy = plateStyle(45, 'lb').scale
+    const mid = plateStyle(25, 'lb').scale
+    const light = plateStyle(2.5, 'lb').scale
+    expect(heavy).toBe(1)
+    expect(mid).toBeLessThan(heavy)
+    expect(light).toBeLessThan(mid)
+    expect(light).toBeGreaterThanOrEqual(0.45)
+  })
+
+  it('lays a side out biggest first, so the drawing loads inboard out', () => {
+    const load = platesFor(275, 45, PLATES_LB)!
+    expect(barLayout(load.perSide, 'lb').map((p) => p.weight)).toEqual([45, 45, 25])
+  })
+
+  it('draws nothing on an empty bar', () => {
+    expect(barLayout([], 'lb')).toEqual([])
   })
 })
