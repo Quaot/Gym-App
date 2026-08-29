@@ -6,12 +6,17 @@ export const uid = (): string =>
 export const clamp = (n: number, lo: number, hi: number) =>
   Math.min(hi, Math.max(lo, n))
 
+/** Nearest multiple of step, never below one step. */
+export const roundToStep = (v: number, step: number): number =>
+  Math.max(step, Math.round(v / step) * step)
+
 /** Trims trailing zeros: 62.5 -> "62.5", 60 -> "60". */
 export const fmtWeight = (w: number | null | undefined) =>
   w === null || w === undefined ? '' : String(Math.round(w * 100) / 100)
 
 export const fmtSet = (weight: number | null, reps: number | null, unit: Unit) => {
-  if (weight === null && reps === null) return '—'
+  // A neutral placeholder, since an absent value is not a range.
+  if (weight === null && reps === null) return '·'
   if (weight === null) return `${reps ?? '?'} reps`
   return `${fmtWeight(weight)} ${unit} × ${reps ?? '?'}`
 }

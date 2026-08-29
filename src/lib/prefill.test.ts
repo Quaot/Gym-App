@@ -22,7 +22,9 @@ const exercise = (sets: LoggedSet[], over: Partial<SessionExercise> = {}): Sessi
   name: 'Barbell Bench Press',
   repLow: 5,
   repHigh: 8,
+  repCap: 13,
   restSec: 180,
+  warmupPlan: [],
   notes: '',
   sets,
   ...over,
@@ -41,7 +43,11 @@ const session = (exercises: SessionExercise[], over: Partial<Session> = {}): Ses
   ...over,
 })
 
-const stateWith = (sessions: Session[]): AppState => ({ ...freshState(), sessions })
+const stateWith = (sessions: Session[]): AppState => {
+  const base = freshState()
+  // The grid cases below assume a 2.5 step; pin it so unit defaults can move.
+  return { ...base, sessions, settings: { ...base.settings, weightStep: 2.5 } }
+}
 
 /** Last session: 2 warm-ups (40×10, 50×6) then working sets 100×5, 102.5×5, 105×4. */
 const lastSession = () =>
@@ -123,7 +129,7 @@ describe('warm-up prefill', () => {
     const today = session([
       exercise([set({ warmup: true }), set({ weight: 100, reps: 5 })]),
     ])
-    const state = stateWith([today]) // weightStep 2.5
+    const state = stateWith([today]) // weightStep pinned to 2.5
     expect(prefillFor(state, today, today.exercises[0], 0)).toEqual({ weight: 50, reps: 10 })
 
     // Off-grid halves land on the nearest step: 102.5 / 2 = 51.25 -> 52.5.
@@ -137,6 +143,44 @@ describe('warm-up prefill', () => {
     const today = session([exercise([set({ warmup: true })])])
     const state = stateWith([today])
     expect(prefillFor(state, today, today.exercises[0], 0)).toEqual({ weight: null, reps: 10 })
+  })
+})
+
+describe('progression drives the ghost on straight sets', () => {
+  it('ghosts the next weight once every set topped the range', () => {
+    // Straight 100 x 8 with repHigh 8: topped, so 5 lb jump lands at 102.5.
+    const done = session(
+      [exercise([
+        set({ weight: 100, reps: 8, done: true }),
+        set({ weight: 100, reps: 8, done: true }),
+      ])],
+      { finishedAt: 2_000 },
+    )
+    const today = session([exercise([set({}), set({})])])
+    const state = stateWith([today, done])
+    const fill = prefillFor(state, today, today.exercises[0], 0)
+    expect(fill.weight).toBeGreaterThan(100)
+    expect(fill.reps).toBeGreaterThanOrEqual(5)
+  })
+
+  it('ghosts one more rep while the range is unfinished', () => {
+    const done = session(
+      [exercise([
+        set({ weight: 100, reps: 6, done: true }),
+        set({ weight: 100, reps: 6, done: true }),
+      ])],
+      { finishedAt: 2_000 },
+    )
+    const today = session([exercise([set({}), set({})])])
+    const state = stateWith([today, done])
+    expect(prefillFor(state, today, today.exercises[0], 0)).toEqual({ weight: 100, reps: 7 })
+  })
+
+  it('leaves a ramped session to the ordinal carry', () => {
+    // The lastSession fixture ramps 100/102.5/105, so set 1 still gets 100.
+    const today = session([exercise([set({}), set({}), set({})])])
+    const state = stateWith([today, lastSession()])
+    expect(prefillFor(state, today, today.exercises[0], 0)).toEqual({ weight: 100, reps: 5 })
   })
 })
 

@@ -59,7 +59,7 @@ export const Sheet = ({ title, onClose, children }: Props) => {
         <div className="grab" aria-hidden />
         <div className="sheet-head">
           <h2>{title}</h2>
-          <button className="btn sm ghost" aria-label="Close" onClick={close}>
+          <button className="btn-plain" aria-label="Close" onClick={close}>
             ✕
           </button>
         </div>

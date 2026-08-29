@@ -50,6 +50,9 @@ export type Action =
   // sleep
   | { type: 'upsertSleep'; entries: SleepEntry[] }
   | { type: 'deleteSleep'; entryId: ID }
+  // sample data
+  | { type: 'addSessions'; sessions: Session[] }
+  | { type: 'removeTagged'; prefix: string }
 
 const withProgram = (state: AppState, programId: ID, fn: (p: Program) => Program): AppState => ({
   ...state,
@@ -305,5 +308,23 @@ export const reducer = (state: AppState, action: Action): AppState => {
 
     case 'deleteSleep':
       return { ...state, sleep: state.sleep.filter((e) => e.id !== action.entryId) }
+
+    case 'addSessions':
+      return {
+        ...state,
+        sessions: [...action.sessions, ...state.sessions].sort(
+          (a, b) => (b.finishedAt ?? b.startedAt) - (a.finishedAt ?? a.startedAt),
+        ),
+      }
+
+    case 'removeTagged':
+      return {
+        ...state,
+        sessions: state.sessions.filter((s) => !s.id.startsWith(action.prefix)),
+        sleep: state.sleep.filter((e) => !e.id.startsWith(action.prefix)),
+        activeSessionId: state.activeSessionId?.startsWith(action.prefix)
+          ? null
+          : state.activeSessionId,
+      }
   }
 }

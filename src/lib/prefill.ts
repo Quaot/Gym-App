@@ -1,5 +1,7 @@
 import type { AppState, LoggedSet, Session, SessionExercise } from '../types'
 import { lastPerformance, warmupSets, workingSets } from './history'
+import { roundToStep } from './util'
+import { suggestionFor } from './suggest'
 
 export interface Prefill {
   weight: number | null
@@ -7,9 +9,6 @@ export interface Prefill {
 }
 
 const values = (s: LoggedSet): Prefill => ({ weight: s.weight, reps: s.reps })
-
-const roundToStep = (v: number, step: number): number =>
-  Math.max(step, Math.round(v / step) * step)
 
 /**
  * What an untouched set should assume when the user completes it — and what
@@ -20,8 +19,10 @@ const roundToStep = (v: number, step: number): number =>
  * the mapping), and never inherit warm-up weights. Warm-up rows only inherit
  * from warm-ups, falling back to half the first working weight.
  */
+export type PrefillState = Pick<AppState, 'sessions' | 'settings' | 'catalog'>
+
 export const prefillFor = (
-  state: AppState,
+  state: PrefillState,
   session: Session,
   exercise: SessionExercise,
   index: number,
@@ -58,6 +59,24 @@ export const prefillFor = (
   // Working set: carry today's previous working set first.
   const prevWork = [...before].reverse().find((s) => !s.warmup && s.reps !== null)
   if (prevWork) return values(prevWork)
+
+  // Then what progression says to do next. The engine reasons about straight
+  // sets, so a session that ramped weight across sets keeps its own shape and
+  // falls through to the ordinal carry below.
+  const lastWasStraight =
+    lastWorking.length <= 1 ||
+    lastWorking.every((s) => s.weight === lastWorking[0].weight)
+  const { suggestion } = lastWasStraight
+    ? suggestionFor(state, exercise, session.id)
+    : { suggestion: { kind: 'first' as const, weight: null, targetReps: 0 } }
+  if (suggestion.kind !== 'first' && suggestion.weight !== null) {
+    const perSet =
+      suggestion.kind === 'reps' ? suggestion.perSetTargets[before.filter((s) => !s.warmup).length] : undefined
+    return {
+      weight: suggestion.weight > 0 ? suggestion.weight : null,
+      reps: perSet ?? suggestion.targetReps,
+    }
+  }
 
   // Then last session's working set at the same working ordinal.
   const ordinal = before.filter((s) => !s.warmup).length

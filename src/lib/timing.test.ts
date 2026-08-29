@@ -18,7 +18,9 @@ const ex = (sets: LoggedSet[]): SessionExercise => ({
   name: 'X',
   repLow: 8,
   repHigh: 12,
+  repCap: 17,
   restSec: 120,
+  warmupPlan: [],
   notes: '',
   sets,
 })

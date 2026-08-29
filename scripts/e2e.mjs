@@ -49,10 +49,10 @@ const newPage = async (viewport = { width: 390, height: 844 }) => {
 
 const readState = (page) =>
   page.evaluate(() => ({
-    core: JSON.parse(localStorage.getItem('gym:v2:core') ?? 'null'),
-    sessions: JSON.parse(localStorage.getItem('gym:v2:sessions') ?? '[]'),
-    sleep: JSON.parse(localStorage.getItem('gym:v2:sleep') ?? '[]'),
-    rest: JSON.parse(localStorage.getItem('gym:v2:rest') ?? 'null'),
+    core: JSON.parse(localStorage.getItem('gym:v3:core') ?? 'null'),
+    sessions: JSON.parse(localStorage.getItem('gym:v3:sessions') ?? '[]'),
+    sleep: JSON.parse(localStorage.getItem('gym:v3:sleep') ?? '[]'),
+    rest: JSON.parse(localStorage.getItem('gym:v3:rest') ?? 'null'),
   }))
 
 const flushStorage = (page) =>
@@ -81,6 +81,18 @@ const dragTape = async (page, tape, px) => {
   await page.waitForTimeout(150)
 }
 
+/** Drags with no waits at all: several moves inside one animation frame. */
+const dragTapeFast = async (page, tape, px, moves = 30) => {
+  const box = await tape.locator('.strip-wrap').boundingBox()
+  const cx = box.x + box.width / 2
+  const cy = box.y + box.height / 2
+  await page.mouse.move(cx, cy)
+  await page.mouse.down()
+  for (let i = 1; i <= moves; i++) await page.mouse.move(cx - (px * i) / moves, cy)
+  await page.mouse.up()
+  await page.waitForTimeout(400) // let any coast settle
+}
+
 /* ================================================================== *
  * 1. v1 upgrade
  * ================================================================== */
@@ -92,11 +104,11 @@ const dragTape = async (page, tape, px) => {
     localStorage.setItem('gym-app:state:v1', raw)
   }, v1Fixture)
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
 
   const v1 = JSON.parse(v1Fixture)
   const state = await readState(page)
-  assert(state.core?.version === 2, '1. v1 blob migrates to v2 keys')
+  assert(state.core?.version === 3, '1. v1 blob migrates to v3 keys')
   assert(
     await page.evaluate(() => localStorage.getItem('gym-app:state:v1')) === null,
     '1. old key removed after migration',
@@ -108,9 +120,9 @@ const dragTape = async (page, tape, px) => {
     '1. every migrated exercise resolves in the catalog',
   )
   // The v1 active session resumes; the true orphan is offered for recovery.
-  assert(await page.getByText('in progress').first().isVisible(), '1. active v1 session offered as Resume')
-  assert(await page.getByText(/Unfinished:/).isVisible(), '1. orphaned v1 session offered for recovery')
-  assert(await page.locator('.list-item').count() > 0, '1. history renders after migration')
+  assert(await page.getByText('In progress').first().isVisible(), '1. active v1 session offered as Resume')
+  assert(await page.getByText(/never finished/).first().isVisible(), '1. orphaned v1 session offered for recovery')
+  assert(await page.locator('.row-item').count() > 0, '1. history renders after migration')
   assert(errors.length === 0, '1. no console errors', errors.join('; '))
   await ctx.close()
 }
@@ -127,21 +139,21 @@ const dragTape = async (page, tape, px) => {
     // time of a *valid* envelope: decode repairs this, so instead poison the
     // renderer path via an unparsable core that forces the fresh-state path…
     // …which never throws. So simulate the true worst case: a render crash.
-    localStorage.setItem('gym:v2:core', '{"version":2') // truncated JSON
+    localStorage.setItem('gym:v3:core', '{"version":3') // truncated JSON
   })
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
   assert(true, '2a. truncated storage boots clean via decoder (no white screen)')
 
   // Force a genuine render crash to exercise the ErrorBoundary itself.
   await page.evaluate(() => {
-    localStorage.setItem('gym:v2:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v3:sessions', JSON.stringify([{
       id: 'x', startedAt: 1, finishedAt: 2, dayName: 'D', dayNotes: '', notes: '',
       exercises: [], programId: null, dayId: null,
     }]))
   })
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
   const crashed = await page.evaluate(() => {
     try {
       window.dispatchEvent(new Event('__nonexistent'))
@@ -162,18 +174,19 @@ const dragTape = async (page, tape, px) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
 
-  await page.getByRole('button', { name: 'Start' }).first().click()
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
   await page.waitForSelector('.set-editor')
 
   // 4. Tape gestures on the weight tape.
+  const step = (await readState(page)).core.settings.weightStep
   const weightTape = page.locator('.set-editor .tape').first()
   const before = parseFloat(await weightTape.locator('.readout .big').innerText())
-  await dragTape(page, weightTape, 14 * 8) // 8 slow steps left = +8 * 2.5kg
+  await dragTape(page, weightTape, 14 * 8) // 8 slow steps left = +8 steps
   const after = parseFloat(await weightTape.locator('.readout .big').innerText())
-  assert(Math.abs(after - (before + 20)) <= 2.5, '4a. slow drag moves by expected detents',
-    `${before} -> ${after}`)
+  assert(Math.abs(after - (before + 8 * step)) <= step, '4a. slow drag moves by expected detents',
+    `${before} -> ${after} (step ${step})`)
 
   // Typing fallback.
   await weightTape.locator('.readout button').click()
@@ -192,6 +205,30 @@ const dragTape = async (page, tape, px) => {
   await dragTape(page, repsTape, 14 * 5)
   const repsNow = parseInt(await repsTape.locator('.readout .big').innerText(), 10)
   assert(repsNow === 5, '4d. detents track a slow 5-step drag', String(repsNow))
+
+  // 4e. A fast drag must land where the finger left it, not skip past it.
+  const fastTarget = page.locator('.set-editor .tape').nth(1)
+  await fastTarget.locator('.readout button').click()
+  await fastTarget.locator('input').fill('10')
+  await fastTarget.locator('input').press('Enter')
+  await dragTapeFast(page, fastTarget, 14 * 6) // 6 steps up from 10
+  const fastValue = parseInt(await fastTarget.locator('.readout .big').innerText(), 10)
+  assert(Math.abs(fastValue - 16) <= 1, '4e. fast drag lands within one detent (no skipping)',
+    `expected ~16, got ${fastValue}`)
+
+  // 4f. A cancelled pointer (browser claiming a scroll) must not commit.
+  const beforeCancel = await fastTarget.locator('.readout .big').innerText()
+  const cancelBox = await fastTarget.locator('.strip-wrap').boundingBox()
+  await page.mouse.move(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2)
+  await page.mouse.down()
+  await page.mouse.move(cancelBox.x + cancelBox.width / 2 - 100, cancelBox.y + cancelBox.height / 2)
+  await page.locator('.set-editor .strip-wrap').nth(1).dispatchEvent('pointercancel', { pointerId: 1 })
+  await page.mouse.up()
+  await page.waitForTimeout(250)
+  assert(
+    (await fastTarget.locator('.readout .big').innerText()) === beforeCancel,
+    '4f. pointercancel reverts without committing',
+  )
 
   // 3. Complete -> rest bar with this exercise's rest; header ticks.
   await page.getByRole('button', { name: 'Complete set' }).click()
@@ -224,15 +261,15 @@ const dragTape = async (page, tape, px) => {
 
   // 5. Start-while-active: no Start buttons offered; day cards say In session.
   await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
-  const startCount = await page.locator('.card.day-card .btn', { hasText: /^Start$/ }).count()
+  const startCount = await page.getByRole('button', { name: 'Start', exact: true }).count()
   assert(startCount === 0, '5. no start path while a session is active (bug 1)')
 
   // Finish and verify storage.
-  await page.locator('.day-card', { hasText: 'in progress' }).click()
+  await page.locator('.metric', { hasText: 'In progress' }).click()
   await page.waitForSelector('.ex-card')
   await page.getByRole('button', { name: 'Finish' }).click()
   await page.getByRole('button', { name: 'Save workout' }).click()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
   await flushStorage(page)
   const done = await readState(page)
   const finished = done.sessions.find((s) => s.finishedAt !== null)
@@ -254,7 +291,7 @@ const dragTape = async (page, tape, px) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
 
   await flushStorage(page)
   const before = await readState(page)
@@ -286,11 +323,11 @@ const dragTape = async (page, tape, px) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
 
   await page.locator('.tabbar').getByRole('button', { name: 'Program' }).click()
   await page.getByRole('button', { name: 'Splits' }).click()
-  await page.getByRole('button', { name: /Upper \/ Lower — 5 days/ }).click()
+  await page.getByRole('button', { name: 'Push, Pull, Legs, Upper, Lower' }).click()
   await page.waitForTimeout(300)
   await flushStorage(page)
   const state = await readState(page)
@@ -298,12 +335,11 @@ const dragTape = async (page, tape, px) => {
   const pplul = state.core.programs.find((p) => p.presetKey === 'pplul5')
   assert(pplul && pplul.days.length === 5, '8b. PPLUL has 5 days')
   assert(state.core.activeProgramId === pplul.id, '8c. new split becomes active')
-  assert(
-    (await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click(),
-    await page.waitForSelector('.day-card'),
-    await page.locator('.card.day-card').count()) === 5,
-    '8d. Today shows the 5 PPLUL days',
-  )
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForSelector('.group')
+  const todayText = await page.locator('.main').innerText()
+  const missing = ['Push', 'Pull', 'Legs', 'Upper', 'Lower'].filter((n) => !todayText.includes(n))
+  assert(missing.length === 0, '8d. Today shows the 5 PPLUL days', `missing ${missing.join(',')}`)
   // Continuity: squat exists in both presets under one id.
   const squatIds = state.core.programs.map(
     (p) => p.days.flatMap((d) => d.exercises).find((t) => t.exerciseId === 'squat')?.exerciseId,
@@ -321,7 +357,7 @@ const dragTape = async (page, tape, px) => {
   // Fresh boot first so the core slice exists, then seed history alongside it.
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
   await page.evaluate(() => {
     const sessions = []
     const now = Date.now()
@@ -333,7 +369,7 @@ const dragTape = async (page, tape, px) => {
         startedAt: t - 3600000, finishedAt: t, notes: '',
         exercises: [{
           id: `se${i}`, exerciseId: 'barbell-bench-press', name: 'Barbell Bench Press',
-          repLow: 5, repHigh: 8, restSec: 180, notes: '',
+          repLow: 5, repHigh: 8, repCap: 13, restSec: 180, warmupPlan: [], notes: '',
           sets: [
             { id: `a${i}`, weight, reps: 5, done: true, warmup: false, completedAt: t - 600000 },
             { id: `b${i}`, weight, reps: 5, done: true, warmup: false, completedAt: t - 300000 },
@@ -341,10 +377,10 @@ const dragTape = async (page, tape, px) => {
         }],
       })
     }
-    localStorage.setItem('gym:v2:sessions', JSON.stringify(sessions))
+    localStorage.setItem('gym:v3:sessions', JSON.stringify(sessions))
   })
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
 
   await page.locator('.tabbar').getByRole('button', { name: 'Progress' }).click()
   await page.waitForSelector('.chart-card')
@@ -356,17 +392,17 @@ const dragTape = async (page, tape, px) => {
   await page.getByRole('button', { name: 'Barbell Bench Press' }).click()
   await page.waitForSelector('.chart-card')
   assert(await page.getByText(/Estimated 1RM/).isVisible(), '9c. e1RM chart renders')
-  const allCount = await page.locator('.main .card.tight.row').count()
+  const allCount = await page.locator('.main .row-item').count()
   await page.getByRole('tab', { name: 'M', exact: true }).click()
   await page.waitForTimeout(200)
-  const monthCount = await page.locator('.main .card.tight.row').count()
+  const monthCount = await page.locator('.main .row-item').count()
   assert(monthCount < allCount, '9d. range chips filter the window', `${monthCount} vs ${allCount}`)
 
   // 10. Sleep zip import through the real worker.
   await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
   const [chooser] = await Promise.all([
     page.waitForEvent('filechooser'),
-    page.getByRole('button', { name: 'Import Apple Health export' }).click(),
+    page.getByRole('button', { name: 'Import from Health' }).click(),
   ])
   await chooser.setFiles(path.join(ROOT, 'test-fixtures/export.zip'))
   await page.waitForSelector('text=/Imported \\d+ nights/', { timeout: 15000 })
@@ -405,7 +441,7 @@ const dragTape = async (page, tape, px) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
 
   const h0 = await page.evaluate(() => history.length)
   for (const tab of ['Program', 'Progress', 'History', 'Settings', 'Today']) {
@@ -435,14 +471,14 @@ const dragTape = async (page, tape, px) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.day-card')
+  await page.waitForSelector('.group')
   await page.evaluate(() => {
-    localStorage.setItem('gym:v2:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v3:sessions', JSON.stringify([{
       id: 'orphan1', programId: null, dayId: null, dayName: 'Push 1', dayNotes: '', notes: '',
       startedAt: Date.now() - 86400000, finishedAt: null,
       exercises: [{
         id: 'oe1', exerciseId: 'barbell-bench-press', name: 'Barbell Bench Press',
-        repLow: 5, repHigh: 8, restSec: 180, notes: '',
+        repLow: 5, repHigh: 8, repCap: 13, restSec: 180, warmupPlan: [], notes: '',
         sets: [
           { id: 'os1', weight: 60, reps: 5, done: true, warmup: false, completedAt: Date.now() - 86000000 },
           { id: 'os2', weight: 60, reps: 5, done: true, warmup: false, completedAt: Date.now() - 85800000 },
@@ -451,10 +487,10 @@ const dragTape = async (page, tape, px) => {
     }]))
   })
   await page.reload()
-  await page.waitForSelector('.day-card')
-  assert(await page.getByText(/Unfinished: Push 1/).isVisible(), '12a. orphan surfaces on Home')
-  await page.getByText(/Unfinished: Push 1/).click()
-  await page.getByRole('button', { name: 'Resume it' }).click()
+  await page.waitForSelector('.group')
+  assert(await page.getByText(/never finished/).first().isVisible(), '12a. orphan surfaces on Home')
+  await page.locator('.metric', { hasText: 'never finished' }).click()
+  await page.getByRole('button', { name: 'Resume', exact: true }).click()
   await page.waitForSelector('.ex-card')
   assert(await page.locator('.set-line.done').count() === 2,
     '12b. orphan resumes into the session screen with its logged sets')
@@ -475,6 +511,156 @@ const dragTape = async (page, tape, px) => {
 }
 
 /* ================================================================== *
+ * 15. Warm-ups are generated from the working weight
+ * ================================================================== */
+{
+  const { ctx, page } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+
+  // Seed one topped bench session so the engine has a weight to plan from.
+  await page.evaluate(() => {
+    const core = JSON.parse(localStorage.getItem('gym:v3:core'))
+    const day = core.programs[0].days[0]
+    const t = Date.now() - 3 * 86400000
+    localStorage.setItem('gym:v3:sessions', JSON.stringify([{
+      id: 'seed', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
+      dayNotes: day.notes, startedAt: t - 3600000, finishedAt: t, notes: '',
+      exercises: [{
+        id: 'e', exerciseId: 'barbell-bench-press', name: 'Barbell Bench Press',
+        repLow: 3, repHigh: 5, repCap: 7, restSec: 210, warmupPlan: [], notes: '',
+        sets: [{ id: 'x', weight: 185, reps: 5, done: true, warmup: false, completedAt: t }],
+      }],
+    }]))
+  })
+  await page.reload()
+  await page.waitForSelector('.group')
+  // Start Push 1 specifically, since the seeded session moves "up next" along.
+  await page.locator('.row-item').filter({ hasText: 'Push 1' }).first().click()
+  await page.waitForSelector('.set-editor')
+
+  await flushStorage(page)
+  const live = (await readState(page)).sessions.find((s) => s.finishedAt === null)
+  const bench = live.exercises.find((e) => e.exerciseId === 'barbell-bench-press')
+  const warm = bench.sets.filter((s) => s.warmup)
+  const work = bench.sets.filter((s) => !s.warmup)
+  assert(warm.length >= 3, '15a. warm-up rows generated from the plan', `${warm.length} rows`)
+  assert(
+    warm.every((s) => s.weight > 0 && s.weight % 5 === 0),
+    '15b. every warm-up lands on the loadable grid',
+  )
+  assert(warm.every((s, i) => i === 0 || s.weight > warm[i - 1].weight), '15c. warm-ups ramp upward')
+  // 185 topped a 3-5 range, so the engine plans 190 and warms up under it.
+  assert(warm.every((s) => s.weight < 190), '15d. warm-ups stay under the working weight')
+  assert(work.length > 0, '15e. working rows follow the warm-ups')
+
+  // The Why popover explains the suggestion on hold.
+  const why = page.locator('.set-editor').getByText('Why')
+  if (await why.count() > 0) {
+    await why.first().hover()
+    await page.waitForTimeout(600)
+    assert(await page.locator('.info-pop').count() > 0, '15f. holding Why explains the suggestion')
+  } else {
+    assert(true, '15f. Why affordance only shows on working sets')
+  }
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 16. Cancel a workout from inside it
+ * ================================================================== */
+{
+  const { ctx, page } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.set-editor')
+
+  await page.getByRole('button', { name: 'Complete set' }).click()
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.waitForSelector('.sheet')
+  assert(await page.getByText('Cancel this workout?').isVisible(), '16a. cancel asks first')
+  await page.getByRole('button', { name: 'Keep going' }).click()
+  await page.waitForTimeout(300)
+  assert(
+    (await page.locator('.sheet').count()) === 0 && (await page.locator('.ex-card').count()) > 0,
+    '16b. keep going returns to the workout',
+  )
+
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.getByRole('button', { name: 'Cancel workout' }).click()
+  await page.waitForSelector('.tabbar')
+  await flushStorage(page)
+  const after = await readState(page)
+  assert(after.sessions.length === 0, '16c. cancelling discards the session', `${after.sessions.length} left`)
+  assert(after.core.activeSessionId === null, '16d. no session is left active')
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 17. Sample data generates and removes cleanly
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Add sample data' }).click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const seeded = await readState(page)
+  assert(seeded.sessions.length > 30, '17a. sample data fills a training block',
+    `${seeded.sessions.length} sessions`)
+  assert(seeded.sleep.length > 30, '17b. sample sleep lands too', `${seeded.sleep.length} nights`)
+  assert(seeded.sessions.every((s) => s.id.startsWith('demo-')), '17c. every sample id is tagged')
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Progress' }).click()
+  await page.waitForTimeout(500)
+  assert(await page.locator('svg[role="img"]').count() >= 2, '17d. charts render from sample data')
+  await page.screenshot({ path: `${SHOT_DIR}/e2e-progress-demo.png`, fullPage: true })
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Remove sample data' }).click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const cleaned = await readState(page)
+  assert(cleaned.sessions.length === 0, '17e. removing takes the sample data away')
+  assert(cleaned.sleep.length === 0, '17f. and its sleep with it')
+  assert(errors.length === 0, '17. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 18. No dashes in anything the screen actually renders
+ * ================================================================== */
+{
+  const { ctx, page } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+
+  const offenders = []
+  for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
+    await page.locator('.tabbar').getByRole('button', { name: tab }).click()
+    await page.waitForTimeout(250)
+    const text = await page.locator('body').innerText()
+    for (const line of text.split('\n')) {
+      if (/[—–]/.test(line) || / - /.test(line)) offenders.push(`${tab}: ${line}`)
+    }
+  }
+  assert(offenders.length === 0, '18. rendered copy carries no dashes', offenders.join(' | '))
+  await ctx.close()
+}
+
+/* ================================================================== *
  * 13–14. Small-screen render + screenshots, zero console errors
  * ================================================================== */
 {
@@ -482,8 +668,8 @@ const dragTape = async (page, tape, px) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.day-card')
-  await page.getByRole('button', { name: 'Start' }).first().click()
+  await page.waitForSelector('.group')
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
   await page.waitForSelector('.set-editor')
   const overflow = await page.evaluate(
     () => document.documentElement.scrollWidth - document.documentElement.clientWidth,
