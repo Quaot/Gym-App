@@ -7,12 +7,14 @@ import type {
 import { load, save } from './lib/storage'
 import { move, uid } from './lib/util'
 import { defaultSettings, emptyDay } from './lib/defaults'
+import { pplProgram } from './lib/presets'
 
 export type Action =
   | { type: 'replaceState'; state: AppState }
   | { type: 'setSettings'; patch: Partial<Settings> }
   | { type: 'addDay' }
   | { type: 'updateDay'; dayId: ID; patch: Partial<Omit<DayTemplate, 'id' | 'exercises'>> }
+  | { type: 'loadPreset' }
   | { type: 'deleteDay'; dayId: ID }
   | { type: 'moveDay'; dayId: ID; delta: number }
   | { type: 'addExercise'; dayId: ID; name?: string }
@@ -81,6 +83,9 @@ export const reducer = (state: AppState, action: Action): AppState => {
   switch (action.type) {
     case 'replaceState':
       return action.state
+
+    case 'loadPreset':
+      return { ...state, program: pplProgram() }
 
     case 'setSettings':
       return { ...state, settings: { ...state.settings, ...action.patch } }
@@ -157,6 +162,7 @@ export const reducer = (state: AppState, action: Action): AppState => {
         id: uid(),
         dayId: day.id,
         dayName: day.name,
+        dayNotes: day.notes,
         startedAt: Date.now(),
         finishedAt: null,
         notes: '',

@@ -195,6 +195,14 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
           <input value={day.name} onChange={(e) => dispatch({ type: 'updateDay', dayId, patch: { name: e.target.value } })} />
         </label>
 
+        <label className="field card tight">
+          <span>Warm-up / day notes</span>
+          <textarea
+            rows={3} value={day.notes} placeholder="Warm-up protocol, reminders…"
+            onChange={(e) => dispatch({ type: 'updateDay', dayId, patch: { notes: e.target.value } })}
+          />
+        </label>
+
         {day.exercises.length === 0 && (
           <div className="empty">
             Nothing here yet.

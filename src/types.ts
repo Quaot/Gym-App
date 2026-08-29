@@ -17,6 +17,8 @@ export interface ExerciseTemplate {
 export interface DayTemplate {
   id: ID
   name: string
+  /** Warm-up protocol or anything that applies to the whole day. */
+  notes: string
   exercises: ExerciseTemplate[]
 }
 
@@ -52,6 +54,7 @@ export interface Session {
   id: ID
   dayId: ID | null
   dayName: string
+  dayNotes: string
   startedAt: number
   finishedAt: number | null
   exercises: SessionExercise[]
