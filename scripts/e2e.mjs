@@ -192,7 +192,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     `${before} -> ${after} (step ${step})`)
 
   // Typing fallback.
-  await weightTape.locator('.readout button').click()
+  await weightTape.locator('.readout .big').click()
   await weightTape.locator('input').fill('60')
   await weightTape.locator('input').press('Enter')
   assert(
@@ -211,7 +211,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // 4e. A fast drag must land where the finger left it, not skip past it.
   const fastTarget = page.locator('.set-editor .tape').nth(1)
-  await fastTarget.locator('.readout button').click()
+  await fastTarget.locator('.readout .big').click()
   await fastTarget.locator('input').fill('10')
   await fastTarget.locator('input').press('Enter')
   await dragTapeFast(page, fastTarget, 14 * 6) // 6 steps up from 10
@@ -219,18 +219,22 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   assert(Math.abs(fastValue - 16) <= 1, '4e. fast drag lands within one detent (no skipping)',
     `expected ~16, got ${fastValue}`)
 
-  // 4f. A cancelled pointer (browser claiming a scroll) must not commit.
-  const beforeCancel = await fastTarget.locator('.readout .big').innerText()
+  // 4f. A cancelled pointer keeps the number the finger reached. Losing a
+  // weight you just dialled in is worse than any alternative, so this is the
+  // opposite of the old behaviour, deliberately.
+  const beforeCancel = parseInt(await fastTarget.locator('.readout .big').innerText(), 10)
   const cancelBox = await fastTarget.locator('.strip-wrap').boundingBox()
   await page.mouse.move(cancelBox.x + cancelBox.width / 2, cancelBox.y + cancelBox.height / 2)
   await page.mouse.down()
-  await page.mouse.move(cancelBox.x + cancelBox.width / 2 - 100, cancelBox.y + cancelBox.height / 2)
+  await page.mouse.move(cancelBox.x + cancelBox.width / 2 - 70, cancelBox.y + cancelBox.height / 2)
+  await page.waitForTimeout(60)
   await page.locator('.set-editor .strip-wrap').nth(1).dispatchEvent('pointercancel', { pointerId: 1 })
   await page.mouse.up()
   await page.waitForTimeout(250)
+  const afterCancel = parseInt(await fastTarget.locator('.readout .big').innerText(), 10)
   assert(
-    (await fastTarget.locator('.readout .big').innerText()) === beforeCancel,
-    '4f. pointercancel reverts without committing',
+    Math.abs(afterCancel - (beforeCancel + 5)) <= 1,
+    '4f. a cancelled pointer keeps the value the finger reached',
   )
 
   // 3. Complete -> rest bar with this exercise's rest; header ticks.
@@ -422,7 +426,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   // Manual slider log for last night.
   await page.locator('.tabbar').getByRole('button', { name: 'Progress' }).click()
   const sleepTape = page.locator('.sleep-quick .tape')
-  await sleepTape.locator('.readout button').click()
+  await sleepTape.locator('.readout .big').click()
   await sleepTape.locator('input').fill('7.5')
   await sleepTape.locator('input').press('Enter')
   await page.waitForTimeout(300)

@@ -233,3 +233,22 @@ describe('sleep slice', () => {
     expect(state.sleep.find((e) => e.night === '2026-08-02' && e.source === 'manual')!.asleepMin).toBe(400)
   })
 })
+
+describe('a logged set is history', () => {
+  it('refuses to patch a set that is already done', () => {
+    // A gesture that settles late, or any stray dispatch, must never rewrite
+    // what was recorded. Uncomplete it first and the edit lands.
+    let state = withLive()
+    const exId = state.sessions[0].exercises[0].id
+    const setId = state.sessions[0].exercises[0].sets[0].id
+    state = reducer(state, { type: 'completeSet', exId, setId, weight: 100, reps: 5, now: 1000 })
+    state = reducer(state, { type: 'updateSet', exId, setId, patch: { weight: 999 } })
+    const logged = state.sessions[0].exercises[0].sets[0]
+    expect(logged.weight).toBe(100)
+    expect(logged.reps).toBe(5)
+
+    state = reducer(state, { type: 'uncompleteSet', exId, setId })
+    state = reducer(state, { type: 'updateSet', exId, setId, patch: { weight: 999 } })
+    expect(state.sessions[0].exercises[0].sets[0].weight).toBe(999)
+  })
+})

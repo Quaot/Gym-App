@@ -1,5 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { detentTick, unlockAudio } from '../lib/audio'
+import {
+  MIN_FLICK, PX_PER_STEP, RUBBER, coastLanding, quantizeToStep, velocityFrom,
+} from '../lib/gestures'
 
 export interface TapeInputProps {
   /** Committed value. null renders the ghost. */
@@ -21,12 +24,9 @@ export interface TapeInputProps {
   decimal?: boolean
 }
 
-const PX_PER_STEP = 14
-const FRICTION = 0.92
-const MIN_FLICK = 0.35 // px per ms
-const MAX_COAST_PX = 15 * PX_PER_STEP
-const RUBBER = 0.3
 const STRIP_WINDOW = 80 // steps drawn either side of the committed value
+/** How long the strip takes to glide to a thrown value it has already committed. */
+const GLIDE_MS = 280
 
 const defaultFormat = (v: number) => String(Math.round(v * 100) / 100)
 
@@ -35,9 +35,13 @@ const defaultFormat = (v: number) => String(Math.round(v * 100) / 100)
  * value reads large above it. The gesture never touches React state. It
  * writes the strip transform and the readout text directly through refs
  * inside requestAnimationFrame, so no frame is ever dropped to a render.
- * Position is continuous while the finger is down and snaps to a detent
- * only at release; a flick coasts a bounded distance; a cancelled pointer
- * (the browser claiming a scroll) restores the committed value.
+ *
+ * Rules that matter in a gym, with sweat on your hands:
+ *   - Vertical movement cannot steal the drag, and a cancelled pointer keeps
+ *     the number your finger reached rather than throwing it away.
+ *   - A second finger is ignored, never destructive.
+ *   - A throw commits its landing value at once and only the strip animates,
+ *     so a set can never be logged with the number the tape was leaving.
  */
 export const TapeInput = ({
   value,
@@ -63,6 +67,13 @@ export const TapeInput = ({
   const readoutRef = useRef<HTMLButtonElement | null>(null)
   const commitRef = useRef(onCommit)
   commitRef.current = onCommit
+  // The committed value as it stands right now. `settle` runs frames after the
+  // render that scheduled it, so it must not close over a stale one.
+  const valueRef = useRef(value)
+  valueRef.current = value
+  /** Offset to glide from once a thrown value has already been committed. */
+  const glideFrom = useRef<number | null>(null)
+  const typingCancelled = useRef(false)
 
   const gesture = useRef<{
     pointerId: number
@@ -76,11 +87,7 @@ export const TapeInput = ({
   } | null>(null)
   const coastRaf = useRef<number | null>(null)
 
-  const clampValue = (v: number) => Math.min(max, Math.max(min, v))
-  const quantize = (v: number) => {
-    const snapped = Math.round(v / step) * step
-    return clampValue(Math.round(snapped * 1000) / 1000)
-  }
+  const quantize = (v: number) => quantizeToStep(v, step, min, max)
   const valueAt = (offsetPx: number) => shown + (offsetPx / PX_PER_STEP) * step
 
   /* -------------------------------------------------------------- *
@@ -110,17 +117,45 @@ export const TapeInput = ({
   const transformFor = (offsetPx: number) =>
     `translate3d(${(-((shown / step - firstStep) * PX_PER_STEP) - offsetPx).toFixed(2)}px, 0, 0)`
 
-  const paint = (offsetPx: number) => {
+  const paint = (offsetPx: number, live = true) => {
     if (stripRef.current) stripRef.current.style.transform = transformFor(offsetPx)
     if (readoutRef.current) {
-      readoutRef.current.textContent = format(quantize(valueAt(offsetPx)))
+      // At rest the readout must read exactly what React rendered, or a value
+      // off the current grid would show one number and commit another.
+      readoutRef.current.textContent = live ? format(quantize(valueAt(offsetPx))) : format(shown)
     }
   }
 
   // Keep the DOM in sync whenever React renders (idle state only).
   useEffect(() => {
-    if (!gesture.current && coastRaf.current === null) paint(0)
+    if (!gesture.current && coastRaf.current === null && glideFrom.current === null) {
+      paint(0, false)
+    }
   })
+
+  // A thrown value is committed at once; the strip then glides to it, so what
+  // the eye follows and what the store holds can never disagree.
+  useLayoutEffect(() => {
+    const from = glideFrom.current
+    const strip = stripRef.current
+    if (from === null || !strip) return
+    glideFrom.current = null
+    strip.style.transition = 'none'
+    strip.style.transform = transformFor(from)
+    void strip.getBoundingClientRect()
+    strip.style.transition = `transform ${GLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)`
+    strip.style.transform = transformFor(0)
+    const done = window.setTimeout(() => {
+      strip.style.transition = ''
+      paint(0, false)
+    }, GLIDE_MS + 20)
+    return () => window.clearTimeout(done)
+  })
+
+  /** Pins the screen while a finger is on the tape, so a slip cannot scroll. */
+  const lockScroll = (on: boolean) => {
+    document.body.toggleAttribute('data-tape-drag', on)
+  }
 
   const stopCoast = () => {
     if (coastRaf.current !== null) {
@@ -132,6 +167,7 @@ export const TapeInput = ({
   useEffect(
     () => () => {
       stopCoast()
+      lockScroll(false)
       if (gesture.current?.raf) cancelAnimationFrame(gesture.current.raf)
     },
     [],
@@ -162,15 +198,16 @@ export const TapeInput = ({
   /** The single exit: snap, reset the DOM to the committed frame, commit. */
   const settle = (offsetPx: number) => {
     const final = quantize(valueAt(offsetPx))
-    paint(0)
-    if (final !== value) commitRef.current(final)
-    else paint(0)
+    paint(0, false)
+    if (final !== valueRef.current) commitRef.current(final)
   }
 
   const onPointerDown = (e: React.PointerEvent) => {
-    if (typing) return
+    // A second finger must never take a live gesture away from the first.
+    if (typing || gesture.current) return
     stopCoast()
     unlockAudio()
+    lockScroll(true)
     e.currentTarget.setPointerCapture(e.pointerId)
     gesture.current = {
       pointerId: e.pointerId,
@@ -204,65 +241,93 @@ export const TapeInput = ({
     }
   }
 
-  const endGesture = (): NonNullable<typeof gesture.current> | null => {
+  /** Tears the gesture down, but only for the finger that owns it. */
+  const endGesture = (pointerId: number): NonNullable<typeof gesture.current> | null => {
     const g = gesture.current
+    if (!g || g.pointerId !== pointerId) return null
     gesture.current = null
-    if (g?.raf) cancelAnimationFrame(g.raf)
-    return g ?? null
+    if (g.raf) cancelAnimationFrame(g.raf)
+    lockScroll(false)
+    return g
+  }
+
+  const release = (e: React.PointerEvent) => {
+    const g = endGesture(e.pointerId)
+    if (!g) return null
+    if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId)
+    }
+    return g
   }
 
   const onPointerUp = (e: React.PointerEvent) => {
-    const g = endGesture()
-    if (!g || e.pointerId !== g.pointerId) return
+    const g = release(e)
+    if (!g) return
     const offsetPx = rubberize(g.startX - e.clientX)
-
-    const now = performance.now()
-    const oldest = g.samples[0]
-    const newest = g.samples[g.samples.length - 1]
-    const dt = Math.max(1, (newest?.t ?? now) - oldest.t)
-    const velocity = (oldest.x - (newest?.x ?? e.clientX)) / dt // px/ms, + = increase
+    const velocity = velocityFrom(g.samples, e.clientX)
 
     if (Math.abs(velocity) < MIN_FLICK) {
       settle(offsetPx)
       return
     }
 
-    // Bounded coast: decay per frame, hard cap on total distance.
-    let px = offsetPx
-    let v = Math.max(-8, Math.min(8, velocity * 10)) // px per frame
-    let travelled = 0
-    const detentState = { lastDetent: quantize(valueAt(px)) }
-    const coast = () => {
-      v *= FRICTION
-      const stepPx = Math.abs(v) > 0 ? v : 0
-      if (travelled + Math.abs(stepPx) > MAX_COAST_PX) {
-        settle(px)
-        coastRaf.current = null
-        return
-      }
-      travelled += Math.abs(stepPx)
-      px = rubberize(px + stepPx)
-      paint(px)
-      clickDetent(px, detentState)
-      const val = quantize(valueAt(px))
-      const atEdge = val === min || val === max
-      if (Math.abs(v) < 0.4 || (atEdge && Math.abs(v) < 4)) {
-        settle(px)
-        coastRaf.current = null
-        return
-      }
-      coastRaf.current = requestAnimationFrame(coast)
+    // A throw lands where the friction says it lands, worked out here rather
+    // than a frame at a time, and committed before anything else can read it.
+    const landing = rubberize(coastLanding(offsetPx, velocity))
+    const final = quantize(valueAt(landing))
+    if (final !== valueRef.current) {
+      // Offset of the release position relative to the value about to commit.
+      glideFrom.current = offsetPx - ((final - shown) / step) * PX_PER_STEP
+      if (tickSound) detentTick()
+      navigator.vibrate?.(4)
+      commitRef.current(final)
+    } else {
+      settle(landing)
     }
-    coastRaf.current = requestAnimationFrame(coast)
   }
 
-  /** The browser took the gesture (scroll): restore, never commit. */
+  /**
+   * The system took the pointer (a call, the app switcher, a slip the browser
+   * read as something else). Keep the number the finger reached: losing a
+   * weight you just dialled in is worse than any alternative.
+   */
   const onPointerCancel = (e: React.PointerEvent) => {
-    const g = endGesture()
-    if (!g || e.pointerId !== g.pointerId) return
+    const g = endGesture(e.pointerId)
+    if (!g) return
     stopCoast()
-    paint(0)
+    settle(g.offsetPx)
   }
+
+  /* -------------------------------------------------------------- *
+   * Step buttons: the precise path, for when a drag is the wrong tool.
+   * -------------------------------------------------------------- */
+  const repeat = useRef<{ delay: number; tick: number }>({ delay: 0, tick: 0 })
+
+  const nudge = (dir: 1 | -1) => {
+    stopCoast()
+    commitRef.current(quantize((valueRef.current ?? ghost) + dir * step))
+  }
+
+  const holdStart = (dir: 1 | -1) => (e: React.PointerEvent) => {
+    e.preventDefault()
+    unlockAudio()
+    nudge(dir)
+    if (tickSound) detentTick()
+    repeat.current.delay = window.setTimeout(() => {
+      repeat.current.tick = window.setInterval(() => {
+        nudge(dir)
+        if (tickSound) detentTick()
+      }, 90)
+    }, 400)
+  }
+
+  const holdEnd = () => {
+    window.clearTimeout(repeat.current.delay)
+    window.clearInterval(repeat.current.tick)
+    repeat.current = { delay: 0, tick: 0 }
+  }
+
+  useEffect(() => holdEnd, [])
 
   const openTyping = () => {
     stopCoast()
@@ -273,16 +338,33 @@ export const TapeInput = ({
 
   const commitTyped = () => {
     setTyping(false)
+    if (typingCancelled.current) {
+      typingCancelled.current = false
+      return
+    }
     const trimmed = text.trim().replace(',', '.')
     if (trimmed === '') return
     const n = parseFloat(trimmed)
-    if (!Number.isNaN(n)) commitRef.current(clampValue(n))
+    // A typed number lands on the same grid a dragged one does.
+    if (!Number.isNaN(n)) commitRef.current(quantize(n))
   }
 
   return (
     <div className={`tape${isGhost ? ' ghosted' : ''}`}>
       <span className="label">{label}</span>
       <div className="readout">
+        {!typing && (
+          <button
+            className="tape-step"
+            aria-label={`${label} down`}
+            onPointerDown={holdStart(-1)}
+            onPointerUp={holdEnd}
+            onPointerLeave={holdEnd}
+            onPointerCancel={holdEnd}
+          >
+            −
+          </button>
+        )}
         {typing ? (
           <input
             autoFocus
@@ -293,8 +375,12 @@ export const TapeInput = ({
             onChange={(e) => setText(e.target.value)}
             onBlur={commitTyped}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') commitTyped()
-              if (e.key === 'Escape') setTyping(false)
+              // Both paths end in a blur, which is the single commit point.
+              if (e.key === 'Enter') e.currentTarget.blur()
+              if (e.key === 'Escape') {
+                typingCancelled.current = true
+                e.currentTarget.blur()
+              }
             }}
           />
         ) : (
@@ -308,6 +394,18 @@ export const TapeInput = ({
           </button>
         )}
         {suffix && !typing && <span className="suffix">{suffix}</span>}
+        {!typing && (
+          <button
+            className="tape-step"
+            aria-label={`${label} up`}
+            onPointerDown={holdStart(1)}
+            onPointerUp={holdEnd}
+            onPointerLeave={holdEnd}
+            onPointerCancel={holdEnd}
+          >
+            +
+          </button>
+        )}
       </div>
       <div
         className="strip-wrap"
@@ -331,7 +429,7 @@ export const TapeInput = ({
           ref={stripRef}
           className="strip"
           width={STRIP_WINDOW * 2 * PX_PER_STEP}
-          height={56}
+          height={64}
           style={{ transform: transformFor(0) }}
           aria-hidden
         >
@@ -340,8 +438,8 @@ export const TapeInput = ({
               <line
                 x1={t.x}
                 x2={t.x}
-                y1={t.major ? 12 : 22}
-                y2={t.major ? 44 : 34}
+                y1={t.major ? 14 : 25}
+                y2={t.major ? 48 : 38}
                 stroke={t.major ? 'var(--label-2)' : 'var(--gray3)'}
                 strokeWidth={t.major ? 2 : 1.5}
                 strokeLinecap="round"
@@ -349,7 +447,7 @@ export const TapeInput = ({
               {t.label !== null && (
                 <text
                   x={t.x}
-                  y={54}
+                  y={60}
                   textAnchor="middle"
                   fontSize="10"
                   fontWeight="600"

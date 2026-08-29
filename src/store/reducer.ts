@@ -247,9 +247,13 @@ export const reducer = (state: AppState, action: Action): AppState => {
       }))
 
     case 'updateSet':
+      // Invariant: a logged set is history. Only uncompleting it reopens it,
+      // so a gesture that settles late can never rewrite what you recorded.
       return withSessionExercise(state, action.exId, (e) => ({
         ...e,
-        sets: e.sets.map((s) => (s.id === action.setId ? { ...s, ...action.patch } : s)),
+        sets: e.sets.map((s) =>
+          s.id === action.setId && !s.done ? { ...s, ...action.patch } : s,
+        ),
       }))
 
     case 'completeSet':

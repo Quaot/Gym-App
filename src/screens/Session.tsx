@@ -5,7 +5,7 @@ import { act } from '../store/actions'
 import { switchTab } from '../lib/router'
 import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
-import { Screen } from '../app/Screen'
+import { Screen, forgetScroll } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
 import { fmtClock, fmtWeight } from '../lib/util'
 import { prefillFor } from '../lib/prefill'
@@ -79,6 +79,10 @@ const SetRow = ({
   }
 
   const bodyweight = catalog[exercise.exerciseId]?.bodyweight ?? false
+  // The grid the tape snaps to is the one this movement actually loads on, so
+  // a warm-up computed on the same grid can never read back as a different
+  // number than it holds.
+  const weightStep = catalog[exercise.exerciseId]?.increment ?? settings.weightStep
   const { reason } = suggestionFor({ sessions, settings, catalog }, exercise, session.id)
 
   return (
@@ -116,8 +120,8 @@ const SetRow = ({
           ghost={fill.weight ?? 0}
           min={0}
           max={500}
-          step={settings.weightStep}
-          majorEvery={Math.max(1, Math.round(10 / settings.weightStep))}
+          step={weightStep}
+          majorEvery={Math.max(1, Math.round(10 / weightStep))}
           decimal
           tickSound={settings.tickSound}
           format={(v) => fmtWeight(v) || '0'}
@@ -377,7 +381,7 @@ export const SessionScreen = () => {
 
   return (
     <Screen
-      id="session"
+      id={`session/${session.id}`}
       title={session.dayName}
       subtitle={<LiveDuration startedAt={session.startedAt} sets={done} />}
       centerTitle
@@ -429,7 +433,11 @@ export const SessionScreen = () => {
                 : 'Nothing is logged yet'}
             </p>
             <button className="btn-tinted destructive block"
-              onClick={() => { dispatch({ type: 'discardActiveSession' }); switchTab('/') }}>
+              onClick={() => {
+                forgetScroll(`session/${session.id}`)
+                dispatch({ type: 'discardActiveSession' })
+                switchTab('/')
+              }}>
               Cancel workout
             </button>
             <button className="btn-gray block" onClick={() => setCancelling(false)}>
@@ -449,7 +457,11 @@ export const SessionScreen = () => {
             </p>
             <button
               className="btn-filled block" disabled={done === 0}
-              onClick={() => { act.finishSession(); switchTab('/') }}
+              onClick={() => {
+                forgetScroll(`session/${session.id}`)
+                act.finishSession()
+                switchTab('/')
+              }}
             >
               Save workout
             </button>

@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useRoute, switchTab, back } from '../lib/router'
+import { useRoute, switchTab, back, previousPath } from '../lib/router'
 import { useAppSelector } from '../store/store'
 import { EDGE, parallaxOffset, swipeCommits } from '../lib/gestures'
 import { IconChart, IconClock, IconCog, IconDumbbell, IconHome } from '../components/icons'
@@ -48,9 +48,16 @@ const depthOf = (segments: string[]): number =>
  */
 const isModal = (segments: string[]): boolean => segments[0] === 'session'
 
-/** Where back goes, and what shows underneath during an edge swipe. */
-const parentOf = (segments: string[]): string[] =>
-  segments[0] === 'session' ? [] : segments.slice(0, -1)
+/**
+ * What shows underneath during an edge swipe. History is the authority, since
+ * `back()` follows history; the shape of the path is only a fallback for a
+ * cold launch straight into a detail screen, where there is no entry below.
+ */
+const parentOf = (segments: string[]): string[] => {
+  const previous = previousPath()
+  if (previous) return previous.split('/').filter(Boolean)
+  return segments[0] === 'session' ? [] : segments.slice(0, -1)
+}
 
 const pathOf = (segments: string[]) => `/${segments.join('/')}`
 
@@ -86,8 +93,12 @@ export const App = () => {
   const stage = useRef<HTMLDivElement | null>(null)
   const [anim, setAnim] = useState<{ from: string[]; dir: 'push' | 'pop'; key: number } | null>(null)
   const [swiping, setSwiping] = useState(false)
-  const skipNext = useRef(false)
-  const drag = useRef({ active: false, startX: 0, lastX: 0, lastT: 0, width: 1, speed: 0 })
+  // The path a finished swipe is about to land on. The transition it would
+  // otherwise trigger has already been played by the finger.
+  const skipTo = useRef<string | null>(null)
+  const drag = useRef({
+    active: false, pointerId: -1, startX: 0, lastX: 0, lastT: 0, width: 1, speed: 0,
+  })
 
   // Decide the transition while rendering, so the incoming screen never paints
   // one frame at its resting place before it starts to move.
@@ -95,14 +106,26 @@ export const App = () => {
   if (last.current.path !== path) {
     const prev = last.current
     last.current = { path, depth, segments }
-    if (skipNext.current) {
-      skipNext.current = false
+    if (skipTo.current !== null || drag.current.active || swiping) {
+      // Either the finger already played this transition, or a route change
+      // arrived mid swipe. Either way, no animation, and the drag ends here.
+      skipTo.current = null
+      drag.current.active = false
       setAnim(null)
+      if (swiping) setSwiping(false)
     } else {
       const dir = depth > prev.depth ? 'push' : depth < prev.depth ? 'pop' : null
       setAnim(dir ? { from: prev.segments, dir, key: ++serial } : null)
     }
   }
+
+  // animationend is the normal end of a transition; this is the safety net for
+  // a screen that never gets to run its animation.
+  useEffect(() => {
+    if (!anim) return
+    const t = window.setTimeout(() => setAnim(null), 600)
+    return () => window.clearTimeout(t)
+  }, [anim])
 
   const parts = () => {
     const el = stage.current
@@ -127,6 +150,7 @@ export const App = () => {
     if (e.clientX > EDGE) return
     drag.current = {
       active: true,
+      pointerId: e.pointerId,
       startX: e.clientX,
       lastX: e.clientX,
       lastT: e.timeStamp,
@@ -139,7 +163,7 @@ export const App = () => {
 
   const onPointerMove = (e: React.PointerEvent) => {
     const d = drag.current
-    if (!d.active) return
+    if (!d.active || e.pointerId !== d.pointerId) return
     const dt = e.timeStamp - d.lastT
     if (dt > 0) d.speed = (e.clientX - d.lastX) / dt
     d.lastX = e.clientX
@@ -147,9 +171,10 @@ export const App = () => {
     place(Math.max(0, Math.min(d.width, e.clientX - d.startX)))
   }
 
-  const endDrag = (cancelled: boolean) => {
+  const endDrag = (cancelled: boolean, pointerId?: number) => {
     const d = drag.current
-    if (!d.active) return
+    // A second finger lifting must never commit the first finger's swipe.
+    if (!d.active || (pointerId !== undefined && pointerId !== d.pointerId)) return
     d.active = false
     const dx = Math.max(0, Math.min(d.width, d.lastX - d.startX))
     const commit = !cancelled && swipeCommits(dx, d.width, d.speed)
@@ -175,8 +200,11 @@ export const App = () => {
       }
       if (commit) {
         // The gesture already played the animation, so the route change itself
-        // must not play it again.
-        skipNext.current = true
+        // must not play it again. It is a target rather than a flag, and it
+        // clears on a timer too, so a back() that changes nothing (a cold
+        // launch straight into a detail screen) cannot leave it armed.
+        skipTo.current = previousPath()
+        window.setTimeout(() => { skipTo.current = null }, 500)
         back()
       }
       setSwiping(false)
@@ -210,8 +238,8 @@ export const App = () => {
         ref={stage}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
-        onPointerUp={() => endDrag(false)}
-        onPointerCancel={() => endDrag(true)}
+        onPointerUp={(e) => endDrag(false, e.pointerId)}
+        onPointerCancel={(e) => endDrag(true, e.pointerId)}
       >
         {underPath !== null && (
           <div className={underClass} key={underPath}>
