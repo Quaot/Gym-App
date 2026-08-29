@@ -109,10 +109,10 @@ export interface SleepBucket {
 }
 
 const BUCKETS: [string, number, number][] = [
-  ['< 6h', 0, 360],
-  ['6–7h', 360, 420],
-  ['7–8h', 420, 480],
-  ['8h +', 480, 24 * 60 + 1],
+  ['under 6h', 0, 360],
+  ['6 to 7h', 360, 420],
+  ['7 to 8h', 420, 480],
+  ['over 8h', 480, 24 * 60 + 1],
 ]
 
 /** Buckets partition points exactly once by previous-night sleep. */

@@ -1,9 +1,16 @@
 import type { AppState } from '../types'
 import type { AppStore } from './store'
-import { decodeV2, freshState, migrateV1, V1_KEY } from './migrate'
+import { decodeV2, freshState, migrateV1, migrateV2, V1_KEY } from './migrate'
 
 export const KEYS = {
-  core: 'gym:v2:core', // catalog, programs, settings, activeProgramId, activeSessionId
+  core: 'gym:v3:core', // catalog, programs, settings, activeProgramId, activeSessionId
+  sessions: 'gym:v3:sessions',
+  sleep: 'gym:v3:sleep',
+  rest: 'gym:v3:rest',
+} as const
+
+const V2_KEYS = {
+  core: 'gym:v2:core',
   sessions: 'gym:v2:sessions',
   sleep: 'gym:v2:sleep',
   rest: 'gym:v2:rest',
@@ -45,7 +52,17 @@ const readJSON = (key: string): unknown => {
   }
 }
 
-/** Loads state: v2 slices if present, else a v1 blob migrated, else fresh. */
+const retire = (keys: string[]) => {
+  for (const key of keys) {
+    try {
+      localStorage.removeItem(key)
+    } catch {
+      /* removal is best-effort */
+    }
+  }
+}
+
+/** Loads state: v3 slices, else v2 slices migrated, else a v1 blob, else fresh. */
 export const loadInitialState = (): AppState => {
   try {
     const core = readJSON(KEYS.core)
@@ -57,16 +74,25 @@ export const loadInitialState = (): AppState => {
         rest: readJSON(KEYS.rest),
       })
     }
+
+    const v2core = readJSON(V2_KEYS.core)
+    if (v2core !== null && typeof v2core === 'object') {
+      const migrated = migrateV2({
+        ...(v2core as Record<string, unknown>),
+        sessions: readJSON(V2_KEYS.sessions) ?? [],
+        sleep: readJSON(V2_KEYS.sleep) ?? [],
+        rest: readJSON(V2_KEYS.rest),
+      })
+      persistAll(migrated)
+      retire(Object.values(V2_KEYS))
+      return migrated
+    }
+
     const v1 = readJSON(V1_KEY)
     if (v1 !== null) {
-      const migrated = migrateV1(v1)
-      // Write-through, then retire the old key.
+      const migrated = migrateV2(migrateV1(v1))
       persistAll(migrated)
-      try {
-        localStorage.removeItem(V1_KEY)
-      } catch {
-        /* removal is best-effort */
-      }
+      retire([V1_KEY])
       return migrated
     }
   } catch {

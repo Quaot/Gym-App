@@ -55,41 +55,39 @@ export const SleepImportCard = () => {
       }
     }
     worker.onerror = () => {
-      setProgress({ phase: 'error', message: 'The import crashed — is this a Health export?' })
+      setProgress({ phase: 'error', message: 'That file could not be read' })
       worker.terminate()
     }
     worker.postMessage({ file })
   }
 
   return (
-    <div className="card tight stack">
-      <p className="tiny faint">
-        On your iPhone: Health app → your profile picture → <b>Export All Health Data</b>, then
-        open the zip here. Your sleep history is extracted on-device — nothing is uploaded.
-        {sleepCount > 0 && ` ${sleepCount} nights on record.`}
+    <div className="group stack" style={{ padding: 14 }}>
+      <p className="t-caption label-3">
+        {sleepCount > 0 ? `${sleepCount} nights on record` : 'No sleep on record yet'}
       </p>
       <button
-        className="btn block"
+        className="btn-gray block"
         disabled={progress.phase === 'reading'}
         onClick={() => fileRef.current?.click()}
       >
         {progress.phase === 'reading'
           ? `Reading… ${progress.pct !== null ? `${progress.pct}%` : ''}`
-          : 'Import Apple Health export'}
+          : 'Import from Health'}
       </button>
       <input
         ref={fileRef} type="file" accept=".zip,.xml,application/zip,text/xml" hidden
         onChange={(e) => { onFile(e.target.files?.[0]); e.target.value = '' }}
       />
       {progress.phase === 'done' && (
-        <p className="small" style={{ color: 'var(--accent)' }}>
+        <p className="t-subhead" style={{ color: 'var(--accent)' }}>
           {progress.nights > 0
-            ? `Imported ${progress.nights} nights of sleep.`
-            : 'No sleep records found in that file.'}
+            ? `Imported ${progress.nights} nights of sleep`
+            : 'No sleep records found in that file'}
         </p>
       )}
       {progress.phase === 'error' && (
-        <p className="small" style={{ color: 'var(--danger)' }}>{progress.message}</p>
+        <p className="t-subhead" style={{ color: 'var(--danger)' }}>{progress.message}</p>
       )}
     </div>
   )

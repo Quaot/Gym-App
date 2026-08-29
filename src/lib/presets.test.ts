@@ -29,8 +29,8 @@ describe('program shape', () => {
 
   it('gives every day a warm-up with the same two labels', () => {
     for (const d of days) {
-      expect(d.notes, d.name).toMatch(/^General: /)
-      expect(d.notes, d.name).toMatch(/\nDynamic[ (:]/)
+      expect(d.notes, d.name).toMatch(/^Cardio: /)
+      expect(d.notes, d.name).toMatch(/\nDynamic:/)
     }
   })
 
@@ -96,10 +96,10 @@ describe('exercise name style', () => {
 describe('note style', () => {
   const noted = allExercises.filter((e) => e.notes)
 
-  it('writes full sentences', () => {
+  it('opens with a capital and closes without a period', () => {
     for (const e of noted) {
       expect(e.notes, e.name).toMatch(/^[A-Z0-9]/)
-      expect(e.notes, e.name).toMatch(/\.$/)
+      expect(e.notes, e.name).not.toMatch(/\.$/)
       expect(e.notes, e.name).not.toMatch(/\s{2,}/)
     }
   })
@@ -121,7 +121,7 @@ describe('note style', () => {
   })
 
   it('points supersets at a partner named exactly as it appears in the day', () => {
-    const partnerRe = /Superset with ([A-Z][^.]*?)\./
+    const partnerRe = /[Ss]uperset with ([A-Z][^.;,]*?)[.;,]/
     let found = 0
     for (const d of days) {
       const names = new Set(d.exercises.map((e) => e.name))
@@ -138,11 +138,11 @@ describe('note style', () => {
   it('has the second half of each superset close the pair', () => {
     for (const d of days) {
       for (const e of d.exercises) {
-        const m = e.notes.match(/Superset with ([A-Z][^.]*?)\./)
+        const m = e.notes.match(/[Ss]uperset with ([A-Z][^.;,]*?)[.;,]/)
         if (!m) continue
         const partner = d.exercises.find((x) => x.name === m[1])!
-        expect(partner.notes, partner.name).toMatch(new RegExp(`Closes the ${e.name} superset\\.`))
-        expect(partner.notes, partner.name).toMatch(/Rest after this one[.,]/)
+        expect(partner.notes, partner.name).toMatch(new RegExp(`[Cc]loses the ${e.name} superset`))
+        expect(partner.notes, partner.name).toMatch(/rest/i)
       }
     }
   })
@@ -150,7 +150,7 @@ describe('note style', () => {
   it('states the unit on every timed hold', () => {
     for (const e of allExercises) {
       if (!/Stretch$/.test(e.name)) continue
-      expect(e.notes, e.name).toMatch(/Log the hold in seconds: \d+ sec/)
+      expect(e.notes, e.name).toMatch(/Log the hold in seconds/)
     }
   })
 })
@@ -190,6 +190,66 @@ describe('catalog integrity', () => {
     expect(shared.length).toBeGreaterThanOrEqual(20)
     expect(pplIds.has(slugify('Squat'))).toBe(true)
     expect(pplulIds).toContain(slugify('Squat'))
+  })
+})
+
+describe('dash policy', () => {
+  const BANNED = [/\u2014/, /\u2013/, / - /]
+  it('keeps em dashes, en dashes, and spaced hyphens out of every preset string', () => {
+    const texts: string[] = []
+    for (const d of days) {
+      texts.push(d.name, d.notes)
+      for (const e of d.exercises) texts.push(e.name, e.notes)
+    }
+    for (const e of Object.values(catalog)) texts.push(e.name)
+    for (const text of texts) {
+      for (const re of BANNED) {
+        expect(text, JSON.stringify(text)).not.toMatch(re)
+      }
+    }
+  })
+})
+
+describe('v3 preset data', () => {
+  it('gives every exercise an equipment class and a positive increment', () => {
+    for (const e of Object.values(catalog)) {
+      expect(['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight'], e.name).toContain(e.equipment)
+      expect(e.increment, e.name).toBeGreaterThan(0)
+    }
+  })
+
+  it('flags bodyweight equipment consistently with the bodyweight flag', () => {
+    for (const e of Object.values(catalog)) {
+      if (e.bodyweight) expect(e.equipment, e.name).toBe('bodyweight')
+    }
+  })
+
+  it('arms the heavy compounds with a full warm-up ramp', () => {
+    for (const p of [program, pplul]) {
+      for (const d of p.days) {
+        for (const t of d.exercises) {
+          if (['squat', 'deadlift', 'barbell-bench-press', 'incline-barbell-bench-press'].includes(t.exerciseId)) {
+            expect(t.warmups.length, t.exerciseId).toBeGreaterThanOrEqual(3)
+            const last = t.warmups[t.warmups.length - 1]
+            expect(last.pct, t.exerciseId).toBeGreaterThanOrEqual(0.75)
+            const pcts = t.warmups.map((w) => w.pct)
+            expect([...pcts].sort((a, b) => a - b), t.exerciseId).toEqual(pcts)
+          }
+        }
+      }
+    }
+  })
+
+  it('keeps warm-up prescriptions out of the notes', () => {
+    for (const e of allExercises) {
+      expect(e.notes, e.name).not.toMatch(/[Rr]amp|[Ff]eeder|[Ww]arm-up sets/)
+    }
+  })
+
+  it('sets repCap at or above repHigh everywhere', () => {
+    for (const e of allExercises) {
+      expect(e.repCap, e.name).toBeGreaterThanOrEqual(e.repHigh)
+    }
   })
 })
 

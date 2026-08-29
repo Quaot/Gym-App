@@ -1,9 +1,10 @@
 import type {
-  AppState, DayTemplate, Exercise, ExerciseTemplate, LoggedSet, Program,
-  RestState, Session, SessionExercise, Settings, SleepEntry,
+  AppState, DayTemplate, Equipment, Exercise, ExerciseTemplate, LoggedSet,
+  Program, RestState, Session, SessionExercise, Settings, SleepEntry,
+  WarmupStep,
 } from '../types'
 import { SCHEMA_VERSION } from '../types'
-import { makeExercise } from '../lib/catalog'
+import { defaultIncrement, makeExercise } from '../lib/catalog'
 
 /**
  * Repairing decoders: given unknown data (an imported backup, a hand-edited
@@ -44,17 +45,37 @@ const arrOf = <T>(v: unknown, decode: (item: unknown) => T | null): T[] => {
 let fallbackCounter = 0
 const fallbackId = () => `repaired-${Date.now().toString(36)}-${fallbackCounter++}`
 
+const EQUIPMENT: Equipment[] = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight']
+
 const decodeExercise = (v: unknown): Exercise | null => {
   if (!isObj(v)) return null
   const id = idOf(v.id)
   const name = str(v.name, '').trim()
   if (!id || !name) return null
+  const bodyweight = bool(v.bodyweight, false)
+  const equipment = EQUIPMENT.includes(v.equipment as Equipment)
+    ? (v.equipment as Equipment)
+    : bodyweight
+      ? 'bodyweight'
+      : 'machine'
+  const increment = num(v.increment, defaultIncrement(equipment, 'lb'))
   return {
     id,
     name,
-    bodyweight: bool(v.bodyweight, false),
+    bodyweight,
+    equipment,
+    increment: increment > 0 ? increment : defaultIncrement(equipment, 'lb'),
     archived: bool(v.archived, false),
   }
+}
+
+const decodeWarmup = (v: unknown): WarmupStep | null => {
+  if (!isObj(v)) return null
+  const pct = numOrNull(v.pct)
+  const reps = numOrNull(v.reps)
+  if (pct === null || reps === null) return null
+  if (pct < 0.1 || pct > 1 || reps < 1) return null
+  return { pct, reps: Math.round(reps) }
 }
 
 const decodeTemplate = (v: unknown): ExerciseTemplate | null => {
@@ -62,13 +83,16 @@ const decodeTemplate = (v: unknown): ExerciseTemplate | null => {
   const exerciseId = idOf(v.exerciseId)
   if (!exerciseId) return null
   const repLow = Math.max(1, Math.round(num(v.repLow, 8)))
+  const repHigh = Math.max(repLow, Math.round(num(v.repHigh, repLow)))
   return {
     id: idOf(v.id) ?? fallbackId(),
     exerciseId,
     sets: Math.max(1, Math.round(num(v.sets, 3))),
     repLow,
-    repHigh: Math.max(repLow, Math.round(num(v.repHigh, repLow))),
+    repHigh,
+    repCap: Math.max(repHigh, Math.round(num(v.repCap, repHigh + 5))),
     restSec: Math.max(0, Math.round(num(v.restSec, 120))),
+    warmups: arrOf(v.warmups, decodeWarmup),
     notes: str(v.notes, ''),
   }
 }
@@ -114,13 +138,16 @@ const decodeSessionExercise = (v: unknown): SessionExercise | null => {
   const name = str(v.name, '').trim()
   if (!name) return null
   const repLow = Math.max(1, Math.round(num(v.repLow, 8)))
+  const repHigh = Math.max(repLow, Math.round(num(v.repHigh, repLow)))
   return {
     id: idOf(v.id) ?? fallbackId(),
     exerciseId: idOf(v.exerciseId) ?? '',
     name,
     repLow,
-    repHigh: Math.max(repLow, Math.round(num(v.repHigh, repLow))),
+    repHigh,
+    repCap: Math.max(repHigh, Math.round(num(v.repCap, repHigh + 5))),
     restSec: Math.max(0, Math.round(num(v.restSec, 120))),
+    warmupPlan: arrOf(v.warmupPlan, decodeWarmup),
     notes: str(v.notes, ''),
     sets: arrOf(v.sets, decodeSet),
   }
@@ -167,22 +194,25 @@ export const decodeRest = (v: unknown): RestState | null => {
 }
 
 export const defaultSettings = (): Settings => ({
-  unit: 'kg',
+  unit: 'lb',
   defaultRestSec: 150,
   autoStartTimer: true,
-  weightStep: 2.5,
+  weightStep: 5,
   tickSound: true,
+  bodyweight: 175,
 })
 
 const decodeSettings = (v: unknown): Settings => {
   const d = defaultSettings()
   if (!isObj(v)) return d
   return {
-    unit: v.unit === 'lb' ? 'lb' : 'kg',
+    // A stored unit always wins; only a truly fresh state gets the lb default.
+    unit: v.unit === 'kg' ? 'kg' : v.unit === 'lb' ? 'lb' : d.unit,
     defaultRestSec: Math.max(5, Math.round(num(v.defaultRestSec, d.defaultRestSec))),
     autoStartTimer: bool(v.autoStartTimer, d.autoStartTimer),
     weightStep: Math.max(0.25, num(v.weightStep, d.weightStep)),
     tickSound: bool(v.tickSound, d.tickSound),
+    bodyweight: Math.max(0, num(v.bodyweight, d.bodyweight)),
   }
 }
 

@@ -16,8 +16,8 @@ export default defineConfig({
         name: 'Gym App',
         short_name: 'Gym',
         description: 'Offline push/pull/legs set and rep tracker',
-        theme_color: '#0a0c10',
-        background_color: '#0a0c10',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         orientation: 'portrait',
         start_url: base,
@@ -30,6 +30,9 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        // Launch screens are read once by iOS at startup, so they stay out of
+        // the precache and off the first-load budget.
+        globIgnores: ['**/splash/**'],
         navigateFallback: `${base}index.html`,
       },
     }),

@@ -7,9 +7,39 @@ import { isStorageHealthy, persistAll, subscribeStorageHealth } from '../store/p
 import { fmtClock } from '../lib/util'
 import type { Unit } from '../types'
 import { SleepImportCard } from './SleepImport'
+import { askForNotifications, notificationsSupported } from '../lib/notify'
+import { Screen } from '../app/Screen'
+import { generateDemoData, DEMO_PREFIX } from '../lib/demo'
+import { InfoPopover } from '../components/InfoPopover'
 
 const useStorageHealthy = () =>
   useSyncExternalStore(subscribeStorageHealth, isStorageHealthy)
+
+/** Alerts for a rest that runs out while you are looking at something else. */
+const RestAlerts = () => {
+  const [state, setState] = useState(
+    notificationsSupported() ? Notification.permission : 'unsupported',
+  )
+  if (state === 'unsupported') return null
+  if (state === 'granted') {
+    return <span className="t-footnote label-2">Rest alerts are on</span>
+  }
+  if (state === 'denied') {
+    return (
+      <span className="t-footnote label-2">
+        Rest alerts are blocked in your browser settings
+      </span>
+    )
+  }
+  return (
+    <button
+      className="btn-gray block"
+      onClick={() => { void askForNotifications().then(setState) }}
+    >
+      Alert me when rest ends
+    </button>
+  )
+}
 
 export const SettingsScreen = () => {
   const settings = useAppSelector((s) => s.settings)
@@ -34,9 +64,9 @@ export const SettingsScreen = () => {
       const state = decodeV2(JSON.parse(await file.text()))
       dispatch({ type: 'replaceState', state })
       persistAll(state)
-      setMessage('Backup restored.')
+      setMessage('Backup restored')
     } catch {
-      setMessage("That file couldn't be read as a Gym App backup.")
+      setMessage("That file is not a Gym App backup")
     }
   }
 
@@ -44,19 +74,15 @@ export const SettingsScreen = () => {
     dispatch({ type: 'setSettings', patch })
 
   return (
-    <>
-      <header className="topbar"><h1>Settings</h1></header>
-
-      <main className="main">
+    <Screen id="settings" title="Settings" large>
         {!healthy && (
-          <div className="storage-warning" role="alert">
-            Storage is full or blocked — changes are NOT being saved. Export a backup now, then
-            free up space (or leave private browsing).
+          <div className="warning" role="alert">
+            Storage is full and nothing is saving, so export a backup and free up space
           </div>
         )}
 
-        <div className="section-title">Training</div>
-        <div className="card tight stack">
+        <div className="section-header">Training</div>
+        <div className="group stack" style={{ padding: 14 }}>
           <label className="field">
             <span>Weight unit</span>
             <select
@@ -69,77 +95,106 @@ export const SettingsScreen = () => {
           </label>
 
           <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="small muted">Weight step (tape snap)</span>
+            <span className="t-footnote label-2">Weight step</span>
             <div className="row" style={{ gap: 6 }}>
-              <button className="btn sm" aria-label="Decrease weight step"
+              <button className="btn-step" aria-label="Decrease weight step"
                 onClick={() => bump({ weightStep: Math.max(0.25, settings.weightStep - 0.25) })}>−</button>
               <span className="num" style={{ minWidth: 48, textAlign: 'center', fontWeight: 700 }}>
                 {settings.weightStep}
               </span>
-              <button className="btn sm" aria-label="Increase weight step"
+              <button className="btn-step" aria-label="Increase weight step"
                 onClick={() => bump({ weightStep: settings.weightStep + 0.25 })}>+</button>
             </div>
           </div>
 
-          <p className="tiny faint">
-            Changing the unit relabels entries; it doesn't convert numbers you've already logged.
-          </p>
+          <div className="row" style={{ justifyContent: 'space-between' }}>
+            <InfoPopover content="Used to size jumps on pull-ups and dips, where the plates are only part of the load">
+              <span className="t-footnote label-2">Bodyweight</span>
+            </InfoPopover>
+            <div className="row" style={{ gap: 6 }}>
+              <button className="btn-step" aria-label="Lower bodyweight"
+                onClick={() => dispatch({ type: 'setSettings', patch: { bodyweight: Math.max(0, settings.bodyweight - 5) } })}>−</button>
+              <span className="num" style={{ minWidth: 52, textAlign: 'center', fontWeight: 600 }}>
+                {settings.bodyweight}
+              </span>
+              <button className="btn-step" aria-label="Raise bodyweight"
+                onClick={() => dispatch({ type: 'setSettings', patch: { bodyweight: settings.bodyweight + 5 } })}>+</button>
+            </div>
+          </div>
         </div>
 
-        <div className="section-title">Rest timer</div>
-        <div className="card tight stack">
+        <div className="section-header">Rest timer</div>
+        <div className="group stack" style={{ padding: 14 }}>
           <div className="row" style={{ justifyContent: 'space-between' }}>
-            <span className="small muted">Default rest</span>
+            <span className="t-footnote label-2">Default rest</span>
             <div className="row" style={{ gap: 6 }}>
-              <button className="btn sm" aria-label="Decrease default rest"
+              <button className="btn-step" aria-label="Decrease default rest"
                 onClick={() => bump({ defaultRestSec: Math.max(15, settings.defaultRestSec - 15) })}>−</button>
               <span className="num" style={{ minWidth: 52, textAlign: 'center', fontWeight: 700 }}>
                 {fmtClock(settings.defaultRestSec)}
               </span>
-              <button className="btn sm" aria-label="Increase default rest"
+              <button className="btn-step" aria-label="Increase default rest"
                 onClick={() => bump({ defaultRestSec: settings.defaultRestSec + 15 })}>+</button>
             </div>
           </div>
-          <label className="row">
-            <input type="checkbox" style={{ width: 20, height: 20 }} checked={settings.autoStartTimer}
+          <label className="row switch-row">
+            <span className="t-subhead">Start on set completion</span>
+            <input type="checkbox" className="switch" checked={settings.autoStartTimer}
               onChange={(e) => dispatch({ type: 'setSettings', patch: { autoStartTimer: e.target.checked } })} />
-            <span className="small">Start the timer when I complete a set</span>
           </label>
-          <label className="row">
-            <input type="checkbox" style={{ width: 20, height: 20 }} checked={settings.tickSound}
+          <label className="row switch-row">
+            <span className="t-subhead">Tick sounds</span>
+            <input type="checkbox" className="switch" checked={settings.tickSound}
               onChange={(e) => dispatch({ type: 'setSettings', patch: { tickSound: e.target.checked } })} />
-            <span className="small">Tick sounds on the tape input</span>
           </label>
+          <RestAlerts />
         </div>
 
-        <div className="section-title">Sleep</div>
+        <div className="section-header">Sleep</div>
         <SleepImportCard />
 
-        <div className="section-title">Your data</div>
-        <div className="card tight stack">
-          <p className="tiny faint">
-            Everything is stored on this device only — nothing is uploaded. Clearing the browser's
-            site data erases it, so export a backup now and then.
+        <div className="section-header">Sample data</div>
+        <div className="group stack" style={{ padding: 14 }}>
+          <p className="t-caption label-3">
+            Twelve weeks of realistic workouts and sleep, for trying the app out
           </p>
-          <button className="btn block" onClick={exportBackup}>Export backup (.json)</button>
-          <button className="btn block" onClick={() => fileRef.current?.click()}>Import backup</button>
+          <button className="btn-gray block"
+            onClick={() => {
+              const state = getStore().getState()
+              const { sessions, sleep } = generateDemoData(state)
+              dispatch({ type: 'addSessions', sessions })
+              dispatch({ type: 'upsertSleep', entries: sleep })
+            }}>
+            Add sample data
+          </button>
+          <button className="btn-tinted destructive block"
+            onClick={() => dispatch({ type: 'removeTagged', prefix: DEMO_PREFIX })}>
+            Remove sample data
+          </button>
+        </div>
+
+        <div className="section-header">Your data</div>
+        <div className="group stack" style={{ padding: 14 }}>
+          <p className="t-caption label-3">
+            Everything stays on this device, and clearing site data erases it
+          </p>
+          <button className="btn-gray block" onClick={exportBackup}>Export backup</button>
+          <button className="btn-gray block" onClick={() => fileRef.current?.click()}>Import backup</button>
           <input ref={fileRef} type="file" accept="application/json,.json" hidden
             onChange={(e) => { void onFile(e.target.files?.[0]); e.target.value = '' }} />
-          <button className="btn block danger" onClick={() => setConfirmReset(true)}>
+          <button className="btn-tinted destructive block" onClick={() => setConfirmReset(true)}>
             Erase everything
           </button>
         </div>
 
-        <p className="tiny faint" style={{ textAlign: 'center', margin: '20px 0' }}>
-          Gym App · works offline · add to your home screen
+        <p className="t-caption label-3" style={{ textAlign: 'center', margin: '20px 0' }}>
+          Works offline
         </p>
-      </main>
-
       {message && (
         <Sheet title="Import" onClose={() => setMessage(null)}>
           <div className="stack">
-            <p className="small">{message}</p>
-            <button className="btn primary block" onClick={() => setMessage(null)}>OK</button>
+            <p className="t-subhead">{message}</p>
+            <button className="btn-filled block" onClick={() => setMessage(null)}>OK</button>
           </div>
         </Sheet>
       )}
@@ -147,11 +202,10 @@ export const SettingsScreen = () => {
       {confirmReset && (
         <Sheet title="Erase everything?" onClose={() => setConfirmReset(false)}>
           <div className="stack">
-            <p className="small muted">
-              Every logged workout, sleep entry and program edit on this device is deleted, and the
-              app starts over with the built-in program.
+            <p className="t-footnote label-2">
+              Deletes every workout, sleep entry and program edit on this device
             </p>
-            <button className="btn danger block"
+            <button className="btn-tinted destructive block"
               onClick={() => {
                 const state = freshState()
                 dispatch({ type: 'replaceState', state })
@@ -160,10 +214,10 @@ export const SettingsScreen = () => {
               }}>
               Erase and start over
             </button>
-            <button className="btn ghost block" onClick={() => setConfirmReset(false)}>Cancel</button>
+            <button className="btn-gray block" onClick={() => setConfirmReset(false)}>Cancel</button>
           </div>
         </Sheet>
       )}
-    </>
+    </Screen>
   )
 }

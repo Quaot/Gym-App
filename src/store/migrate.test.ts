@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { SCHEMA_VERSION } from '../types'
 import { migrateV1, decodeV2, freshState } from './migrate'
 import { slugify } from '../lib/catalog'
 
@@ -11,8 +12,8 @@ const v1 = JSON.parse(readFileSync(`${__dirname}/../../test-fixtures/v1-state.js
 describe('migrateV1 on the captured fixture', () => {
   const state = migrateV1(v1)
 
-  it('produces version 2', () => {
-    expect(state.version).toBe(2)
+  it('produces the current schema version', () => {
+    expect(state.version).toBe(SCHEMA_VERSION)
   })
 
   it('keeps every v1 session', () => {
@@ -111,7 +112,7 @@ describe('migrateV1 on hostile input', () => {
   it('handles null, garbage, and empty objects by falling back to a fresh state', () => {
     for (const raw of [null, undefined, 42, 'hi', [], {}]) {
       const state = migrateV1(raw)
-      expect(state.version).toBe(2)
+      expect(state.version).toBe(SCHEMA_VERSION)
       expect(state.programs.length).toBeGreaterThan(0)
       expect(state.sessions).toEqual([])
     }

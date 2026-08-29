@@ -49,7 +49,7 @@ const sessionOn = (iso: string, dayName: string, volume: number): Session => ({
   finishedAt: new Date(iso).getTime(),
   exercises: [{
     id: `e${n++}`, exerciseId: 'bench', name: 'Bench', repLow: 5, repHigh: 8,
-    restSec: 120, notes: '', sets: [done(volume / 10, 10)],
+    repCap: 13, restSec: 120, warmupPlan: [], notes: '', sets: [done(volume / 10, 10)],
   }],
   notes: '',
 })

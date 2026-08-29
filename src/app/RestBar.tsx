@@ -3,6 +3,8 @@ import { useAppSelector, dispatch } from '../store/store'
 import { useNow } from '../lib/useNow'
 import { fmtClock } from '../lib/util'
 import { chime } from '../lib/audio'
+import { notifyRestOver } from '../lib/notify'
+import { useWakeLock } from '../lib/wakeLock'
 import { navigate, useRoute } from '../lib/router'
 
 /**
@@ -19,6 +21,9 @@ export const RestBar = () => {
   const route = useRoute()
   const now = useNow(rest ? 250 : 5000)
 
+  // A workout should never be interrupted by the screen going dark.
+  useWakeLock(activeSession !== null)
+
   // Fire the chime exactly once per deadline, keyed by endsAt: +30s after
   // overtime moves the key and legitimately re-arms it (bug 12), while
   // re-renders and remounts do not re-fire it.
@@ -31,6 +36,7 @@ export const RestBar = () => {
     if (now >= rest.endsAt && firedFor.current !== rest.endsAt) {
       firedFor.current = rest.endsAt
       chime()
+      notifyRestOver(rest.exerciseName)
       navigator.vibrate?.([180, 90, 180])
     }
   }, [rest, now])
@@ -42,17 +48,17 @@ export const RestBar = () => {
     const over = remaining <= 0
     const pct = over ? 0 : Math.min(1, remaining / rest.totalSec)
     return (
-      <div className={`restbar${over ? ' over' : ''}`}>
+      <div className={`restbar glass${over ? ' over' : ''}`}>
         <div className="progress" style={{ width: `${pct * 100}%` }} />
         <span className="time num">{over ? `+${fmtClock(-remaining)}` : fmtClock(remaining)}</span>
         <span className="ctx">
-          {over ? 'Rest is up — go' : rest.exerciseName || 'Resting'}
+          {over ? 'Rest is up' : rest.exerciseName || 'Resting'}
         </span>
         <span className="spacer" />
-        <button className="btn sm ghost" onClick={() => dispatch({ type: 'extendRest', bySec: 30 })}>
+        <button className="btn-plain" onClick={() => dispatch({ type: 'extendRest', bySec: 30 })}>
           +30s
         </button>
-        <button className="btn sm" onClick={() => dispatch({ type: 'stopRest' })}>
+        <button className="btn-plain" onClick={() => dispatch({ type: 'stopRest' })}>
           {over ? 'Done' : 'Skip'}
         </button>
       </div>
@@ -62,13 +68,13 @@ export const RestBar = () => {
   // No rest running: on other screens, keep the live workout one tap away.
   if (activeSession && !onSession) {
     return (
-      <div className="restbar">
+      <div className="restbar glass">
         <span className="time num" style={{ fontSize: 18 }}>
           {fmtClock((now - activeSession.startedAt) / 1000)}
         </span>
         <span className="ctx">{activeSession.dayName} in progress</span>
         <span className="spacer" />
-        <button className="btn sm primary" onClick={() => navigate('/session')}>
+        <button className="btn-plain strong" onClick={() => navigate('/session')}>
           Back to workout
         </button>
       </div>
