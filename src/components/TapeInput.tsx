@@ -301,7 +301,7 @@ export const TapeInput = ({
           <button
             ref={readoutRef}
             className="big num"
-            aria-label={`${label}: ${format(shown)}${suffix ? ` ${suffix}` : ''}. Tap to type.`}
+            aria-label={`${label}: ${format(shown)}${suffix ? ` ${suffix}` : ''}, tap to type`}
             onClick={openTyping}
           >
             {format(shown)}

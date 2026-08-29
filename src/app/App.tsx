@@ -21,7 +21,7 @@ const TABS = [
 ] as const
 
 const TabBar = ({ active }: { active: string }) => (
-  <nav className="tabbar">
+  <nav className="tabbar glass">
     {TABS.map(({ path, label, Icon }) => (
       <button
         key={path}

@@ -183,13 +183,13 @@ export const ProgressScreen = () => {
             </>
           ) : (
             <p className="t-footnote label-2" style={{ margin: '4px 4px 8px' }}>
-              Log five nights before a workout to see the pattern.
+              Log five nights before a workout to see the pattern
             </p>
           )}
         </div>
 
         <div className="section-header">Exercises</div>
-        {exercises.length === 0 && <div className="empty">Nothing logged yet.</div>}
+        {exercises.length === 0 && <div className="empty">Nothing logged yet</div>}
         <div className="group">
         {exercises.map((e) => {
           const pb = personalBest(state, e.id)

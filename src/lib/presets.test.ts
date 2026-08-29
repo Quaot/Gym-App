@@ -96,10 +96,10 @@ describe('exercise name style', () => {
 describe('note style', () => {
   const noted = allExercises.filter((e) => e.notes)
 
-  it('writes full sentences', () => {
+  it('opens with a capital and closes without a period', () => {
     for (const e of noted) {
       expect(e.notes, e.name).toMatch(/^[A-Z0-9]/)
-      expect(e.notes, e.name).toMatch(/\.$/)
+      expect(e.notes, e.name).not.toMatch(/\.$/)
       expect(e.notes, e.name).not.toMatch(/\s{2,}/)
     }
   })
@@ -121,7 +121,7 @@ describe('note style', () => {
   })
 
   it('points supersets at a partner named exactly as it appears in the day', () => {
-    const partnerRe = /Superset with ([A-Z][^.;]*?)[.;]/
+    const partnerRe = /[Ss]uperset with ([A-Z][^.;,]*?)[.;,]/
     let found = 0
     for (const d of days) {
       const names = new Set(d.exercises.map((e) => e.name))
@@ -138,10 +138,10 @@ describe('note style', () => {
   it('has the second half of each superset close the pair', () => {
     for (const d of days) {
       for (const e of d.exercises) {
-        const m = e.notes.match(/Superset with ([A-Z][^.;]*?)[.;]/)
+        const m = e.notes.match(/[Ss]uperset with ([A-Z][^.;,]*?)[.;,]/)
         if (!m) continue
         const partner = d.exercises.find((x) => x.name === m[1])!
-        expect(partner.notes, partner.name).toMatch(new RegExp(`Closes the ${e.name} superset`))
+        expect(partner.notes, partner.name).toMatch(new RegExp(`[Cc]loses the ${e.name} superset`))
         expect(partner.notes, partner.name).toMatch(/rest/i)
       }
     }

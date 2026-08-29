@@ -64,9 +64,9 @@ export const SettingsScreen = () => {
       const state = decodeV2(JSON.parse(await file.text()))
       dispatch({ type: 'replaceState', state })
       persistAll(state)
-      setMessage('Backup restored.')
+      setMessage('Backup restored')
     } catch {
-      setMessage("That file is not a Gym App backup.")
+      setMessage("That file is not a Gym App backup")
     }
   }
 
@@ -77,7 +77,7 @@ export const SettingsScreen = () => {
     <Screen id="settings" title="Settings" large>
         {!healthy && (
           <div className="warning" role="alert">
-            Storage is full. Nothing is saving. Export a backup, then free up space.
+            Storage is full and nothing is saving, so export a backup and free up space
           </div>
         )}
 
@@ -108,7 +108,7 @@ export const SettingsScreen = () => {
           </div>
 
           <div className="row" style={{ justifyContent: 'space-between' }}>
-            <InfoPopover content="Used to size jumps on pull-ups and dips, where the plates are only part of the load.">
+            <InfoPopover content="Used to size jumps on pull-ups and dips, where the plates are only part of the load">
               <span className="t-footnote label-2">Bodyweight</span>
             </InfoPopover>
             <div className="row" style={{ gap: 6 }}>
@@ -156,7 +156,7 @@ export const SettingsScreen = () => {
         <div className="section-header">Sample data</div>
         <div className="group stack" style={{ padding: 14 }}>
           <p className="t-caption label-3">
-            Twelve weeks of realistic workouts and sleep, for trying the app out.
+            Twelve weeks of realistic workouts and sleep, for trying the app out
           </p>
           <button className="btn-gray block"
             onClick={() => {
@@ -176,7 +176,7 @@ export const SettingsScreen = () => {
         <div className="section-header">Your data</div>
         <div className="group stack" style={{ padding: 14 }}>
           <p className="t-caption label-3">
-            Everything stays on this device. Clearing site data erases it.
+            Everything stays on this device, and clearing site data erases it
           </p>
           <button className="btn-gray block" onClick={exportBackup}>Export backup</button>
           <button className="btn-gray block" onClick={() => fileRef.current?.click()}>Import backup</button>
@@ -203,7 +203,7 @@ export const SettingsScreen = () => {
         <Sheet title="Erase everything?" onClose={() => setConfirmReset(false)}>
           <div className="stack">
             <p className="t-footnote label-2">
-              Deletes every workout, sleep entry and program edit on this device.
+              Deletes every workout, sleep entry and program edit on this device
             </p>
             <button className="btn-tinted destructive block"
               onClick={() => {

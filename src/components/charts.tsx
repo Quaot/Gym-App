@@ -62,7 +62,7 @@ export const LineChart = ({
   const [scrub, setScrub] = useState<number | null>(null)
 
   if (points.length === 0) {
-    return <div className="empty small">No data yet.</div>
+    return <div className="empty small">No data yet</div>
   }
 
   const pad = { l: 34, r: 12, t: 14, b: 22 }
@@ -303,7 +303,7 @@ export const Scatter = ({
   const pad = { l: 40, r: 12, t: 12, b: 26 }
   const w = Math.max(120, width) - pad.l - pad.r
   const h = height - pad.t - pad.b
-  if (points.length === 0) return <div className="empty small">No data yet.</div>
+  if (points.length === 0) return <div className="empty small">No data yet</div>
 
   const xsv = points.map((p) => p.x)
   const ysv = points.map((p) => p.y)

@@ -651,15 +651,30 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.waitForSelector('.group')
 
   const offenders = []
+  const periods = []
   for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
     await page.locator('.tabbar').getByRole('button', { name: tab }).click()
     await page.waitForTimeout(250)
     const text = await page.locator('body').innerText()
     for (const line of text.split('\n')) {
       if (/[—–]/.test(line) || / - /.test(line)) offenders.push(`${tab}: ${line}`)
+      // House rule: nothing on screen closes with a period.
+      if (/[a-z0-9)\]]\.$/.test(line.trim())) periods.push(`${tab}: ${line}`)
     }
   }
-  assert(offenders.length === 0, '18. rendered copy carries no dashes', offenders.join(' | '))
+  // The workout screen carries the day notes, so it gets scanned too.
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(200)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.set-editor')
+  const sessionText = await page.locator('body').innerText()
+  for (const line of sessionText.split('\n')) {
+    if (/[—–]/.test(line) || / - /.test(line)) offenders.push(`Workout: ${line}`)
+    if (/[a-z0-9)\]]\.$/.test(line.trim())) periods.push(`Workout: ${line}`)
+  }
+
+  assert(offenders.length === 0, '18a. rendered copy carries no dashes', offenders.join(' | '))
+  assert(periods.length === 0, '18b. rendered copy closes no line with a period', periods.join(' | '))
   await ctx.close()
 }
 
