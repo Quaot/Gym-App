@@ -200,6 +200,7 @@ export const defaultSettings = (): Settings => ({
   weightStep: 5,
   tickSound: true,
   bodyweight: 175,
+  barWeight: 45,
 })
 
 const decodeSettings = (v: unknown): Settings => {
@@ -213,6 +214,7 @@ const decodeSettings = (v: unknown): Settings => {
     weightStep: Math.max(0.25, num(v.weightStep, d.weightStep)),
     tickSound: bool(v.tickSound, d.tickSound),
     bodyweight: Math.max(0, num(v.bodyweight, d.bodyweight)),
+    barWeight: Math.max(0, num(v.barWeight, d.barWeight)),
   }
 }
 

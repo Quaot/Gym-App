@@ -861,6 +861,114 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 }
 
 /* ================================================================== *
+ * 21. What v5 promised: locked scrolling, plate math, records
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+
+  // Seed a bench session so today can beat it.
+  await page.evaluate(() => {
+    const core = JSON.parse(localStorage.getItem('gym:v4:core'))
+    const day = core.programs[0].days[0]
+    const t = Date.now() - 3 * 86400000
+    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+      id: 'past', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
+      dayNotes: '', startedAt: t - 3600000, finishedAt: t, notes: '',
+      exercises: [{
+        id: 'e1', exerciseId: 'barbell-bench-press', name: 'Barbell Bench Press',
+        repLow: 3, repHigh: 5, repCap: 7, restSec: 210, warmupPlan: [], notes: '',
+        sets: [{ id: 'x1', weight: 185, reps: 5, done: true, warmup: false, completedAt: t }],
+      }],
+    }]))
+  })
+  await page.reload()
+  await page.waitForSelector('.group')
+  await page.locator('.row-item', { hasText: 'Push 1' }).first().click()
+  await page.waitForSelector('.set-editor')
+
+  // 21a. The warm-up ramp is generated from the weight you are about to lift.
+  const rows = await page.locator('.ex-card').first().locator('.set-line').allInnerTexts()
+  assert(rows.length >= 4, '21a. the bench ramp is built for you', String(rows.length))
+
+  // 21b. A drag that wanders vertically neither scrolls nor loses its value.
+  await page.locator('.screen.top .scroller').evaluate((el) => { el.scrollTop = 100 })
+  await page.waitForTimeout(200)
+  const tape = page.locator('.set-editor .tape').first()
+  const box = await tape.locator('.strip-wrap').boundingBox()
+  const before = parseFloat(await tape.locator('.readout .big').innerText())
+  const scrollBefore = await page.locator('.screen.top .scroller').evaluate((el) => el.scrollTop)
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  await page.mouse.down()
+  for (let i = 1; i <= 8; i++) {
+    await page.mouse.move(box.x + box.width / 2 - i * 7, box.y + box.height / 2 + i * 10)
+    await page.waitForTimeout(16)
+  }
+  await page.mouse.up()
+  await page.waitForTimeout(300)
+  const after = parseFloat(await tape.locator('.readout .big').innerText())
+  const scrollAfter = await page.locator('.screen.top .scroller').evaluate((el) => el.scrollTop)
+  assert(after !== before, '21b. a diagonal drag still moves the tape', `${before} -> ${after}`)
+  assert(scrollAfter === scrollBefore, '21c. and does not scroll the screen',
+    `${scrollBefore} -> ${scrollAfter}`)
+
+  // 21d. The step buttons move exactly one detent.
+  const stepped = async (name) => {
+    await tape.getByRole('button', { name }).click()
+    await page.waitForTimeout(120)
+    return parseFloat(await tape.locator('.readout .big').innerText())
+  }
+  const up = await stepped('Weight up')
+  assert(Math.abs(up - after - 5) < 0.01, '21d. a step button moves one increment', `${after} -> ${up}`)
+  await stepped('Weight down')
+
+  // 21e. Plate math for a barbell lift.
+  await tape.locator('.readout .big').click()
+  await tape.locator('input').fill('185')
+  await tape.locator('input').press('Enter')
+  await page.waitForTimeout(400)
+  const plates = await page.locator('.set-editor .plates').first().innerText()
+  assert(/45, 25/.test(plates.replace(/\n/g, ' ')), '21e. it tells you which plates to hang',
+    plates.replace(/\n/g, ' '))
+
+  // 21f. A typed value lands on the loadable grid.
+  await tape.locator('.readout .big').click()
+  await tape.locator('input').fill('186.3')
+  await tape.locator('input').press('Enter')
+  await page.waitForTimeout(300)
+  assert(
+    (await tape.locator('.readout .big').innerText()) === '185',
+    '21f. a typed value snaps to the grid',
+    await tape.locator('.readout .big').innerText(),
+  )
+
+  // 21g. Beating the old best is marked as it happens.
+  await page.locator('.ex-card').first().locator('.set-line').last().click()
+  await page.waitForTimeout(300)
+  const working = page.locator('.set-editor .tape').first()
+  await working.locator('.readout .big').click()
+  await working.locator('input').fill('205')
+  await working.locator('input').press('Enter')
+  await page.waitForTimeout(300)
+  await page.locator('.set-editor .complete').click()
+  await page.waitForTimeout(600)
+  assert(await page.locator('.pill.record').first().isVisible(), '21g. a record is marked at once')
+
+  // 21h. Finishing shows what the workout came to.
+  await page.getByRole('button', { name: 'Finish' }).click()
+  await page.waitForSelector('.sheet')
+  await page.waitForTimeout(400)
+  const summary = await page.locator('.sheet .summary').innerText()
+  assert(/Volume/.test(summary) && /PR/.test(summary), '21h. the summary counts the work and the records',
+    summary.replace(/\n/g, ' '))
+  assert(errors.length === 0, '21. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
  * 13–14. Small-screen render + screenshots, zero console errors
  * ================================================================== */
 {

@@ -128,6 +128,8 @@ export interface Settings {
   tickSound: boolean
   /** Your bodyweight, used to size jumps on bodyweight movements. */
   bodyweight: number
+  /** The bar you load, so the app can tell you which plates to hang on it. */
+  barWeight: number
 }
 
 export interface AppState {
