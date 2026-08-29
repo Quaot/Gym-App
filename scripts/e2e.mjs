@@ -67,6 +67,8 @@ const flushStorage = (page) =>
 
 const dragTape = async (page, tape, px) => {
   const strip = tape.locator('.strip-wrap')
+  // Screens scroll inside themselves now, so bring the tape into view first.
+  await strip.scrollIntoViewIfNeeded()
   const box = await strip.boundingBox()
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
@@ -83,6 +85,7 @@ const dragTape = async (page, tape, px) => {
 
 /** Drags with no waits at all: several moves inside one animation frame. */
 const dragTapeFast = async (page, tape, px, moves = 30) => {
+  await tape.locator('.strip-wrap').scrollIntoViewIfNeeded()
   const box = await tape.locator('.strip-wrap').boundingBox()
   const cx = box.x + box.width / 2
   const cy = box.y + box.height / 2
@@ -235,9 +238,9 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.waitForSelector('.restbar')
   const t1 = await page.locator('.restbar .time').innerText()
   assert(t1.startsWith('3:'), '3a. rest bar starts with the exercise rest (3:30)', t1)
-  const dur0 = await page.locator('.topbar .sub').innerText()
+  const dur0 = await page.locator('.nav-title .sub').innerText()
   await page.waitForTimeout(2200)
-  const dur1 = await page.locator('.topbar .sub').innerText()
+  const dur1 = await page.locator('.nav-title .sub').innerText()
   assert(dur0 !== dur1, '3b. header duration ticks live (bug 7)', `${dur0} vs ${dur1}`)
 
   // Navigate away and back mid-rest.
@@ -657,6 +660,147 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     }
   }
   assert(offenders.length === 0, '18. rendered copy carries no dashes', offenders.join(' | '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 19. App shell: transitions, edge swipe, scroll memory, sheet drag
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.group')
+
+  // A page that scrolls inside itself: the document never moves.
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: /sample data/i }).first().click()
+  await page.waitForTimeout(600)
+  await page.locator('.tabbar').getByRole('button', { name: 'History' }).click()
+  await page.waitForTimeout(250)
+  await page.locator('.scroller').evaluate((el) => { el.scrollTop = 400 })
+  await page.waitForTimeout(200)
+  assert(
+    await page.evaluate(() => window.scrollY === 0),
+    '19a. the document itself never scrolls',
+  )
+
+  // 17. Collapsing large title.
+  assert(
+    await page.locator('.navbar').evaluate((el) => el.classList.contains('scrolled')),
+    '19b. the bar takes its hairline once the content moves',
+  )
+  assert(
+    parseFloat(await page.locator('.nav-title').evaluate((el) => el.style.opacity)) > 0.9,
+    '19c. the compact title takes over from the large one',
+  )
+
+  // Per-tab scroll memory.
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(200)
+  await page.locator('.tabbar').getByRole('button', { name: 'History' }).click()
+  await page.waitForTimeout(350)
+  const restored = await page.locator('.scroller').evaluate((el) => el.scrollTop)
+  assert(Math.abs(restored - 400) < 2, '19d. each tab reopens where you left it', `${restored}`)
+
+  // Push transition: two screens on stage, then one.
+  await page.locator('.row-item').first().click()
+  await page.waitForTimeout(120)
+  const during = await page.locator('.screen').evaluateAll((els) => els.map((e) => e.className))
+  assert(during.length === 2, '19e. the new screen slides in over the old one', during.join(' | '))
+  assert(
+    during.some((c) => c.includes('anim-push-push-in')) &&
+      during.some((c) => c.includes('anim-push-push-out')),
+    '19f. push animations run in both directions',
+    during.join(' | '),
+  )
+  await page.waitForTimeout(500)
+  assert(
+    await page.locator('.screen').count() === 1,
+    '19g. the old screen leaves once the transition ends',
+  )
+
+  // Edge swipe back, with the parent trailing behind.
+  await page.mouse.move(4, 500)
+  await page.mouse.down()
+  for (let i = 1; i <= 20; i++) {
+    await page.mouse.move(4 + i * 15, 500)
+    await page.waitForTimeout(8)
+  }
+  const swiped = await page.locator('.screen').evaluateAll(
+    (els) => els.map((e) => `${e.className}|${e.style.transform}`),
+  )
+  assert(
+    swiped.some((c) => c.startsWith('screen top') && /translate3d\(3\d\dpx/.test(c)),
+    '19h. the screen follows the finger',
+    swiped.join(' / '),
+  )
+  assert(
+    swiped.some((c) => c.includes('under swiping') && c.includes('translate3d(-')),
+    '19i. the screen behind trails it',
+    swiped.join(' / '),
+  )
+  await page.mouse.up()
+  await page.waitForTimeout(600)
+  assert(
+    await page.evaluate(() => location.hash) === '#/history',
+    '19j. releasing past halfway goes back',
+    await page.evaluate(() => location.hash),
+  )
+
+  // A swipe released early stays put.
+  await page.locator('.row-item').first().click()
+  await page.waitForTimeout(500)
+  const deep = await page.evaluate(() => location.hash)
+  await page.mouse.move(4, 500)
+  await page.mouse.down()
+  for (let i = 1; i <= 5; i++) {
+    await page.mouse.move(4 + i * 6, 500)
+    await page.waitForTimeout(8)
+  }
+  await page.mouse.up()
+  await page.waitForTimeout(500)
+  assert(
+    await page.evaluate(() => location.hash) === deep,
+    '19k. a short swipe springs back and stays',
+  )
+
+  // A workout rises from the bottom instead of sliding sideways.
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(250)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForTimeout(120)
+  const modal = await page.locator('.screen').evaluateAll((els) => els.map((e) => e.className))
+  assert(
+    modal.some((c) => c.includes('anim-modal-push-in')),
+    '19l. the workout is presented, not pushed',
+    modal.join(' | '),
+  )
+  await page.waitForTimeout(600)
+
+  // Sheets clear the tab bar and drag away.
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click()
+  await page.waitForSelector('.sheet')
+  assert(
+    await page.locator('.sheet-backdrop').evaluate((el) => el.parentElement === document.body),
+    '19m. sheets render above the whole app',
+  )
+  const grab = await page.locator('.sheet-drag').boundingBox()
+  await page.mouse.move(grab.x + grab.width / 2, grab.y + 8)
+  await page.mouse.down()
+  for (let i = 1; i <= 12; i++) {
+    await page.mouse.move(grab.x + grab.width / 2, grab.y + 8 + i * 25)
+    await page.waitForTimeout(10)
+  }
+  await page.mouse.up()
+  await page.waitForTimeout(700)
+  assert(await page.locator('.sheet').count() === 0, '19n. dragging a sheet down dismisses it')
+  assert(
+    await page.evaluate(() => location.hash) === '#/session',
+    '19o. and leaves the workout running',
+  )
+  assert(errors.length === 0, '19. no console errors', errors.join('; '))
   await ctx.close()
 }
 

@@ -1,9 +1,11 @@
 import { useMemo, useState } from 'react'
 import { useAppSelector, dispatch } from '../store/store'
 import { act } from '../store/actions'
-import { navigate, back } from '../lib/router'
+import { navigate } from '../lib/router'
 import { Sheet } from '../components/Sheet'
-import { IconBack, IconTrash } from '../components/icons'
+import { IconTrash } from '../components/icons'
+import { Screen } from '../app/Screen'
+import { BackButton } from '../app/BackButton'
 import { formatExerciseList, parseExerciseList } from '../lib/parse'
 import { fmtClock } from '../lib/util'
 import { pplProgram, pplulProgram, presetCatalog } from '../lib/presets'
@@ -20,19 +22,20 @@ export const ProgramScreen = () => {
   const [managing, setManaging] = useState(false)
 
   return (
-    <>
-      <header className="topbar">
-        <h1>
-          Program
-          <span className="sub">{program.name}</span>
-        </h1>
-        <button className="btn-plain" onClick={() => setManaging(true)}>Splits</button>
-        <button className="btn-plain" onClick={() => { setName(program.name); setRenaming(true) }}>
-          Rename
-        </button>
-      </header>
-
-      <main className="main">
+    <Screen
+      id="program"
+      title="Program"
+      subtitle={program.name}
+      large
+      trailing={
+        <>
+          <button className="btn-plain" onClick={() => setManaging(true)}>Splits</button>
+          <button className="btn-plain" onClick={() => { setName(program.name); setRenaming(true) }}>
+            Rename
+          </button>
+        </>
+      }
+    >
         {programs.length > 1 && (
           <div className="seg" role="tablist" aria-label="Programs">
             {programs.map((p) => (
@@ -50,6 +53,7 @@ export const ProgramScreen = () => {
         )}
 
         <div className="section-header">Days</div>
+        <div className="group">
         {program.days.map((day, i) => (
           <div key={day.id} className="row-item">
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -67,14 +71,13 @@ export const ProgramScreen = () => {
             <button className="btn-plain" onClick={() => navigate(`/program/${day.id}`)}>Edit</button>
           </div>
         ))}
+        </div>
 
         <button className="btn-gray block" onClick={() => act.addDay(program.id)}>+ Add day</button>
 
         <p className="t-caption label-3" style={{ marginTop: 16, padding: '0 4px' }}>
           Edits apply to future workouts. Saved workouts keep what you did.
         </p>
-      </main>
-
       {renaming && (
         <Sheet title="Program name" onClose={() => setRenaming(false)}>
           <div className="stack">
@@ -91,7 +94,7 @@ export const ProgramScreen = () => {
       )}
 
       {managing && <SplitsSheet onClose={() => setManaging(false)} />}
-    </>
+    </Screen>
   )
 }
 
@@ -396,21 +399,19 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
 
   if (!program || !day) {
     return (
-      <main className="main">
+      <Screen id="program/missing" title="Edit day" leading={<BackButton />}>
         <div className="empty">That day no longer exists.</div>
-      </main>
+      </Screen>
     )
   }
 
   return (
-    <>
-      <header className="topbar">
-        <button className="btn-plain" aria-label="Back" onClick={back}><IconBack /></button>
-        <h1>Edit day</h1>
-        <button className="btn-plain" onClick={() => setPasting(true)}>Paste list</button>
-      </header>
-
-      <main className="main">
+    <Screen
+      id={`program/${dayId}`}
+      title="Edit day"
+      leading={<BackButton />}
+      trailing={<button className="btn-plain" onClick={() => setPasting(true)}>Paste list</button>}
+    >
         <label className="field card tight">
           <span>Day name</span>
           <input value={day.name}
@@ -441,8 +442,6 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
         <button className="btn-tinted destructive block" style={{ marginTop: 10 }} onClick={() => setConfirmDelete(true)}>
           Delete this day
         </button>
-      </main>
-
       {pasting && <PasteSheet programId={program.id} dayId={dayId} onClose={() => setPasting(false)} />}
       {addingEx && <AddTemplateSheet programId={program.id} dayId={dayId} onClose={() => setAddingEx(false)} />}
 
@@ -458,6 +457,6 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
           </div>
         </Sheet>
       )}
-    </>
+    </Screen>
   )
 }

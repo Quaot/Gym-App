@@ -5,6 +5,7 @@ import { act } from '../store/actions'
 import { switchTab } from '../lib/router'
 import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
+import { Screen } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
 import { fmtClock, fmtWeight } from '../lib/util'
 import { prefillFor } from '../lib/prefill'
@@ -307,7 +308,7 @@ const ExerciseCard = ({
 const LiveDuration = ({ startedAt, sets }: { startedAt: number; sets: number }) => {
   const now = useNow(1000)
   return (
-    <span className="sub num">
+    <span className="num">
       {fmtClock((now - startedAt) / 1000)} · {sets} {sets === 1 ? 'set' : 'sets'} done
     </span>
   )
@@ -375,17 +376,14 @@ export const SessionScreen = () => {
   const done = sessionDoneSetCount(session)
 
   return (
-    <>
-      <header className="topbar">
-        <button className="btn-plain danger" onClick={() => setCancelling(true)}>Cancel</button>
-        <h1 style={{ textAlign: 'center' }}>
-          {session.dayName}
-          <LiveDuration startedAt={session.startedAt} sets={done} />
-        </h1>
-        <button className="btn-plain strong" onClick={() => setFinishing(true)}>Finish</button>
-      </header>
-
-      <main className="main">
+    <Screen
+      id="session"
+      title={session.dayName}
+      subtitle={<LiveDuration startedAt={session.startedAt} sets={done} />}
+      centerTitle
+      leading={<button className="btn-plain danger" onClick={() => setCancelling(true)}>Cancel</button>}
+      trailing={<button className="btn-plain strong" onClick={() => setFinishing(true)}>Finish</button>}
+    >
         {session.dayNotes && (
           <>
             <div className="section-header tight">Before you start</div>
@@ -420,8 +418,6 @@ export const SessionScreen = () => {
           placeholder="Notes"
           onBlur={(e) => dispatch({ type: 'setSessionNotes', notes: e.target.value })}
         />
-      </main>
-
       {adding && <AddExerciseSheet onClose={() => setAdding(false)} />}
 
       {cancelling && (
@@ -461,6 +457,6 @@ export const SessionScreen = () => {
           </div>
         </Sheet>
       )}
-    </>
+    </Screen>
   )
 }

@@ -7,11 +7,39 @@ import { isStorageHealthy, persistAll, subscribeStorageHealth } from '../store/p
 import { fmtClock } from '../lib/util'
 import type { Unit } from '../types'
 import { SleepImportCard } from './SleepImport'
+import { askForNotifications, notificationsSupported } from '../lib/notify'
+import { Screen } from '../app/Screen'
 import { generateDemoData, DEMO_PREFIX } from '../lib/demo'
 import { InfoPopover } from '../components/InfoPopover'
 
 const useStorageHealthy = () =>
   useSyncExternalStore(subscribeStorageHealth, isStorageHealthy)
+
+/** Alerts for a rest that runs out while you are looking at something else. */
+const RestAlerts = () => {
+  const [state, setState] = useState(
+    notificationsSupported() ? Notification.permission : 'unsupported',
+  )
+  if (state === 'unsupported') return null
+  if (state === 'granted') {
+    return <span className="t-footnote label-2">Rest alerts are on</span>
+  }
+  if (state === 'denied') {
+    return (
+      <span className="t-footnote label-2">
+        Rest alerts are blocked in your browser settings
+      </span>
+    )
+  }
+  return (
+    <button
+      className="btn-gray block"
+      onClick={() => { void askForNotifications().then(setState) }}
+    >
+      Alert me when rest ends
+    </button>
+  )
+}
 
 export const SettingsScreen = () => {
   const settings = useAppSelector((s) => s.settings)
@@ -46,10 +74,7 @@ export const SettingsScreen = () => {
     dispatch({ type: 'setSettings', patch })
 
   return (
-    <>
-      <header className="topbar"><h1>Settings</h1></header>
-
-      <main className="main">
+    <Screen id="settings" title="Settings" large>
         {!healthy && (
           <div className="warning" role="alert">
             Storage is full. Nothing is saving. Export a backup, then free up space.
@@ -112,16 +137,17 @@ export const SettingsScreen = () => {
                 onClick={() => bump({ defaultRestSec: settings.defaultRestSec + 15 })}>+</button>
             </div>
           </div>
-          <label className="row">
-            <input type="checkbox" style={{ width: 20, height: 20 }} checked={settings.autoStartTimer}
-              onChange={(e) => dispatch({ type: 'setSettings', patch: { autoStartTimer: e.target.checked } })} />
+          <label className="row switch-row">
             <span className="t-subhead">Start on set completion</span>
+            <input type="checkbox" className="switch" checked={settings.autoStartTimer}
+              onChange={(e) => dispatch({ type: 'setSettings', patch: { autoStartTimer: e.target.checked } })} />
           </label>
-          <label className="row">
-            <input type="checkbox" style={{ width: 20, height: 20 }} checked={settings.tickSound}
-              onChange={(e) => dispatch({ type: 'setSettings', patch: { tickSound: e.target.checked } })} />
+          <label className="row switch-row">
             <span className="t-subhead">Tick sounds</span>
+            <input type="checkbox" className="switch" checked={settings.tickSound}
+              onChange={(e) => dispatch({ type: 'setSettings', patch: { tickSound: e.target.checked } })} />
           </label>
+          <RestAlerts />
         </div>
 
         <div className="section-header">Sleep</div>
@@ -164,8 +190,6 @@ export const SettingsScreen = () => {
         <p className="t-caption label-3" style={{ textAlign: 'center', margin: '20px 0' }}>
           Works offline
         </p>
-      </main>
-
       {message && (
         <Sheet title="Import" onClose={() => setMessage(null)}>
           <div className="stack">
@@ -194,6 +218,6 @@ export const SettingsScreen = () => {
           </div>
         </Sheet>
       )}
-    </>
+    </Screen>
   )
 }
