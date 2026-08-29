@@ -362,6 +362,9 @@ textarea {
 }
 .btn-plain.back { padding-left: 0; gap: 4px; }
 
+/* A finger on a tape pins the screen, so a slip cannot scroll it away. */
+body[data-tape-drag] .scroller { overflow: hidden !important; }
+
 /* Each screen scrolls inside itself, which is what keeps the bar still. */
 .scroller {
   flex: 1;
@@ -831,11 +834,31 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 }
 .tape .readout {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: center;
   gap: 5px;
-  min-height: 46px;
+  min-height: 50px;
 }
+/* The precise path: one detent per press, held down to run. */
+.tape-step {
+  width: 38px;
+  height: 38px;
+  flex: none;
+  border: none;
+  border-radius: 50%;
+  background: var(--glass-tint-strong);
+  color: var(--label);
+  font-size: 20px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  transition: transform 150ms var(--spring);
+}
+.tape-step:first-child { margin-right: auto; }
+.tape-step:last-child { margin-left: auto; }
+.tape-step:active { transform: scale(0.88); }
 .tape .readout .big {
   background: none;
   border: none;
@@ -866,11 +889,13 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 }
 .tape .strip-wrap {
   position: relative;
-  height: 56px;
+  height: 64px;
   overflow: hidden;
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.35);
-  touch-action: pan-y;
+  /* The tape owns the gesture outright: a diagonal thumb can no longer hand
+     it to the page and lose the number you were setting. */
+  touch-action: none;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 15%, #000 85%, transparent);
 }
@@ -961,6 +986,10 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 }
 @keyframes fade { from { opacity: 0; } to { opacity: 1; } }
 .sheet {
+  /* Drag and keyboard lift compose here, so neither can erase the other. */
+  --drag: 0px;
+  --lift: 0px;
+  transform: translate3d(0, calc(var(--drag) - var(--lift)), 0);
   background: rgba(28, 28, 30, 0.72);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
@@ -970,7 +999,13 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   border-radius: 10px 10px 0 0;
   padding: 5px var(--pad) calc(20px + env(safe-area-inset-bottom));
   max-height: 88vh;
+  /* The visual viewport shrinks with the keyboard; dvh follows it. */
+  max-height: 88dvh;
   overflow-y: auto;
+}
+.sheet-wrap {
+  width: 100%;
+  max-width: 720px;
   animation: sheetUp 400ms var(--spring);
 }
 @keyframes sheetUp {
