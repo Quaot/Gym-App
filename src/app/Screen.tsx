@@ -14,6 +14,25 @@ import { titleProgress } from '../lib/gestures'
 const scrollMemory = new Map<string, number>()
 
 export const rememberScroll = (id: string, top: number) => scrollMemory.set(id, top)
+
+/** Room the fixed bars take at the bottom of a screen. */
+const BAR_CLEARANCE = 118
+
+/**
+ * Brings an element fully into view above the tab bar and the rest bar, which
+ * float over the scroller and would otherwise cover whatever sits under them.
+ */
+export const revealAboveBars = (el: HTMLElement | null) => {
+  if (!el) return
+  const scroller = el.closest('.scroller')
+  if (!(scroller instanceof HTMLElement)) return
+  const box = el.getBoundingClientRect()
+  const view = scroller.getBoundingClientRect()
+  const below = box.bottom - (view.bottom - BAR_CLEARANCE)
+  const above = view.top - box.top
+  if (below > 0) scroller.scrollBy({ top: below, behavior: 'smooth' })
+  else if (above > 0) scroller.scrollBy({ top: -above, behavior: 'smooth' })
+}
 export const forgetScroll = (id: string) => scrollMemory.delete(id)
 
 interface Props {

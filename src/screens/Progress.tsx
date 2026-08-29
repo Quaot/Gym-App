@@ -2,7 +2,8 @@ import { useMemo, useState } from 'react'
 import { useAppSelector, dispatch } from '../store/store'
 import { navigate } from '../lib/router'
 import { Bars, CalendarHeatmap, LineChart, Scatter } from '../components/charts'
-import { IconMoon } from '../components/icons'
+import { IconChart, IconMoon } from '../components/icons'
+import { forecastFor } from '../lib/forecast'
 import { Screen } from '../app/Screen'
 import { BackButton } from '../app/BackButton'
 import {
@@ -15,6 +16,10 @@ import { fmtDate, fmtWeight, uid } from '../lib/util'
 import { fmtDuration } from '../lib/util'
 import { sessionTimeSplit } from '../lib/timing'
 import { TapeInput } from '../components/TapeInput'
+
+/** A date near enough to plan around: "around 12 Oct". */
+const fmtForecastDate = (t: number): string =>
+  `around ${new Date(t).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`
 
 const RANGES = [
   { label: 'M', days: 31 },
@@ -249,6 +254,12 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
   const cutoff = Date.now() - range.days * 86400000
   const shown = trend.filter((p) => p.t >= cutoff)
   const bodyweight = exercise?.bodyweight ?? false
+  const [showWorking, setShowWorking] = useState(false)
+  // Where this lift is heading, if it is heading anywhere it can prove.
+  const forecast = useMemo(
+    () => forecastFor(trend, exercise?.increment ?? 5),
+    [trend, exercise?.increment],
+  )
   const pb = personalBest(state, exerciseId)
 
   return (
@@ -267,6 +278,37 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
             </button>
           ))}
         </div>
+
+        {forecast && (
+          <button
+            className="group forecast"
+            onClick={() => setShowWorking((v) => !v)}
+            aria-expanded={showWorking}
+          >
+            <div className="forecast-head">
+              <IconChart />
+              <span className="name">On this trend</span>
+            </div>
+            <div className="forecast-line num">
+              {bodyweight
+                ? `${forecast.target} reps`
+                : `${fmtWeight(forecast.target)} ${unit} × ${forecast.reps}`}
+              <span className="when">{fmtForecastDate(forecast.when)}</span>
+            </div>
+            <div className="t-footnote label-2 num">
+              {forecast.perWeek > 0
+                ? `${fmtWeight(forecast.perWeek)} ${unit} a week, ${forecast.inDays} days out`
+                : `${forecast.inDays} days out`}
+            </div>
+            {showWorking && (
+              <div className="t-caption label-3 forecast-working">
+                A line through your last {trend.length} sessions, which explains{' '}
+                {Math.round(forecast.r2 * 100)}% of them. It is your own trend read forward,
+                so treat it as a direction rather than a promise
+              </div>
+            )}
+          </button>
+        )}
 
         <div className="group chart-card">
           <div className="chart-title">
