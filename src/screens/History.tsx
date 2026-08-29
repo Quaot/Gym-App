@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useAppSelector, dispatch } from '../store/store'
-import { navigate, back } from '../lib/router'
+import { navigate } from '../lib/router'
 import { Sheet } from '../components/Sheet'
-import { IconBack } from '../components/icons'
+import { Screen } from '../app/Screen'
+import { BackButton } from '../app/BackButton'
 import { fmtClock, fmtDate, fmtDuration, fmtSet } from '../lib/util'
 import {
   finishedSessions, sessionSetCount, sessionVolume, workingSets, warmupSets,
@@ -15,18 +16,11 @@ export const HistoryList = () => {
   const finished = finishedSessions(sessions)
 
   return (
-    <>
-      <header className="topbar">
-        <h1>
-          History
-          <span className="sub">{finished.length} workouts logged</span>
-        </h1>
-      </header>
-
-      <main className="main">
+    <Screen id="history" title="History" subtitle={`${finished.length} workouts logged`} large>
         {finished.length === 0 && (
           <div className="empty">Nothing logged yet.</div>
         )}
+        <div className="group">
         {finished.map((s) => (
           <button key={s.id} className="row-item" onClick={() => navigate(`/history/${s.id}`)}>
             <div style={{ flex: 1, minWidth: 0 }}>
@@ -40,8 +34,8 @@ export const HistoryList = () => {
             <span className="chevron">›</span>
           </button>
         ))}
-      </main>
-    </>
+        </div>
+    </Screen>
   )
 }
 
@@ -52,25 +46,21 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
 
   if (!session) {
     return (
-      <main className="main">
+      <Screen id="history/missing" title="Workout" leading={<BackButton />}>
         <div className="empty">This workout is gone.</div>
-      </main>
+      </Screen>
     )
   }
 
   const split = sessionTimeSplit(session)
 
   return (
-    <>
-      <header className="topbar">
-        <button className="btn-plain" aria-label="Back" onClick={back}><IconBack /></button>
-        <h1>
-          {session.dayName}
-          <span className="sub">{fmtDate(session.finishedAt ?? session.startedAt)}</span>
-        </h1>
-      </header>
-
-      <main className="main">
+    <Screen
+      id={`history/${sessionId}`}
+      title={session.dayName}
+      subtitle={fmtDate(session.finishedAt ?? session.startedAt)}
+      leading={<BackButton />}
+    >
         <div className="stat-row" style={{ marginBottom: 12 }}>
           <div className="stat">
             <div className="label">Duration</div>
@@ -140,8 +130,6 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
         )}
 
         <button className="btn-tinted destructive block" onClick={() => setConfirm(true)}>Delete this workout</button>
-      </main>
-
       {confirm && (
         <Sheet title="Delete workout?" onClose={() => setConfirm(false)}>
           <div className="stack">
@@ -154,6 +142,6 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
           </div>
         </Sheet>
       )}
-    </>
+    </Screen>
   )
 }

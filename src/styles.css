@@ -52,6 +52,12 @@
   --r-pill: 999px;
   --hairline: 0.5px;
 
+  /* Type families: New York carries the titles and the numbers, SF the rest. */
+  --font-text: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
+    system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: ui-serif, 'New York', 'Iowan Old Style', 'Palatino Linotype',
+    Palatino, Georgia, serif;
+
   /* Motion */
   --spring: cubic-bezier(0.32, 0.72, 0, 1);
   --ease: cubic-bezier(0.25, 0.1, 0.25, 1);
@@ -77,8 +83,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--label);
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display',
-    system-ui, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-text);
   font-size: 17px;
   line-height: 1.29;
   letter-spacing: -0.025em;
@@ -97,22 +102,25 @@ textarea {
  *  Type scale
  * ---------------------------------------------------------------- */
 .t-largetitle {
+  font-family: var(--font-serif);
   font-size: 34px;
   line-height: 41px;
   font-weight: 700;
-  letter-spacing: -0.031em;
+  letter-spacing: -0.012em;
 }
 .t-title2 {
+  font-family: var(--font-serif);
   font-size: 22px;
   line-height: 28px;
   font-weight: 700;
-  letter-spacing: -0.032em;
+  letter-spacing: -0.014em;
 }
 .t-title3 {
+  font-family: var(--font-serif);
   font-size: 20px;
   line-height: 25px;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.012em;
 }
 .t-headline {
   font-size: 17px;
@@ -151,67 +159,186 @@ textarea {
 .tint { color: var(--accent); }
 .danger { color: var(--red); }
 
-/* Metrics wear rounded, tabular numerals, tightened. */
+/* Numbers wear New York, tabular so columns of them line up. */
 .num {
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-serif);
   font-variant-numeric: tabular-nums;
   font-feature-settings: 'tnum' 1;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
 }
 
 /* ---------------------------------------------------------------- *
  *  Shell
  * ---------------------------------------------------------------- */
 .app {
-  min-height: 100%;
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+/* The stage holds one screen, or two while they slide past each other. */
+.stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+.screen-inner {
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
 }
+.screen.under { z-index: 1; }
+.screen.top { z-index: 2; box-shadow: -10px 0 30px rgba(0, 0, 0, 0.55); }
+.screen.under.swiping {
+  transform: translate3d(-28%, 0, 0);
+  filter: brightness(0.72);
+}
 
-.topbar {
-  position: sticky;
-  top: 0;
+@keyframes screen-in-right {
+  from { transform: translate3d(100%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes screen-out-right {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(100%, 0, 0); }
+}
+@keyframes screen-in-left {
+  from { transform: translate3d(-28%, 0, 0); filter: brightness(0.72); }
+  to { transform: translate3d(0, 0, 0); filter: brightness(1); }
+}
+@keyframes screen-out-left {
+  from { transform: translate3d(0, 0, 0); filter: brightness(1); }
+  to { transform: translate3d(-28%, 0, 0); filter: brightness(0.72); }
+}
+
+.anim-push-push-in { animation: screen-in-right 380ms var(--spring) both; }
+.anim-push-push-out { animation: screen-out-left 380ms var(--spring) both; }
+.anim-push-pop-out { animation: screen-out-right 340ms var(--spring) both; }
+.anim-push-pop-in { animation: screen-in-left 340ms var(--spring) both; }
+
+/* A workout rises over the app, and the app settles back behind it. */
+@keyframes screen-in-bottom {
+  from { transform: translate3d(0, 100%, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+@keyframes screen-out-bottom {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(0, 100%, 0); }
+}
+@keyframes screen-recede {
+  from { transform: scale(1); filter: brightness(1); }
+  to { transform: scale(0.93); filter: brightness(0.6); }
+}
+@keyframes screen-return {
+  from { transform: scale(0.93); filter: brightness(0.6); }
+  to { transform: scale(1); filter: brightness(1); }
+}
+.anim-modal-push-in { animation: screen-in-bottom 420ms var(--spring) both; }
+.anim-modal-push-out { animation: screen-recede 420ms var(--spring) both; }
+.anim-modal-pop-out { animation: screen-out-bottom 360ms var(--spring) both; }
+.anim-modal-pop-in { animation: screen-return 360ms var(--spring) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen[class*='anim-'] { animation-duration: 1ms; }
+}
+
+
+/* ---------------------------------------------------------------- *
+ *  Navigation bar and its collapsing large title
+ * ---------------------------------------------------------------- */
+.navbar {
+  position: relative;
   z-index: 20;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: max(8px, env(safe-area-inset-top)) var(--pad) 8px;
-  background: rgba(0, 0, 0, 0.8);
+  padding: max(6px, env(safe-area-inset-top)) var(--pad) 7px;
+  min-height: 52px;
+  background: rgba(0, 0, 0, 0.72);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
-  min-height: 52px;
 }
-.topbar h1 {
-  margin: 0;
-  flex: 1;
+.navbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--hairline);
+  background: var(--separator);
+  opacity: 0;
+  transition: opacity 200ms var(--ease);
+}
+.navbar.scrolled::after { opacity: 1; }
+.navbar .nav-side {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 0;
   min-width: 0;
+}
+.navbar .nav-side.end { justify-content: flex-end; }
+.nav-title {
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: center;
+}
+.nav-title.center { flex: 1 1 auto; }
+.nav-title .nav-name {
+  display: block;
   font-size: 17px;
   line-height: 22px;
   font-weight: 600;
   letter-spacing: -0.025em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.topbar .sub {
+.nav-title .sub {
   display: block;
   font-size: 13px;
   line-height: 16px;
-  font-weight: 400;
   letter-spacing: 0;
   color: var(--label-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.btn-plain.back { padding-left: 0; gap: 4px; }
+
+/* Each screen scrolls inside itself, which is what keeps the bar still. */
+.scroller {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
 }
 
 /* Large title, sitting in the content rather than the bar. */
 .large-title {
-  padding: 4px var(--pad) 8px;
+  padding: 6px var(--pad) 8px;
   max-width: 720px;
   margin: 0 auto;
   width: 100%;
 }
 .large-title h1 {
   margin: 0;
+  font-family: var(--font-serif);
   font-size: 34px;
   line-height: 41px;
   font-weight: 700;
-  letter-spacing: -0.031em;
+  letter-spacing: -0.012em;
 }
 .large-title .sub {
   color: var(--label-2);
@@ -221,7 +348,6 @@ textarea {
 }
 
 .main {
-  flex: 1;
   padding: 0 var(--pad);
   padding-bottom: calc(120px + env(safe-area-inset-bottom));
   max-width: 720px;
@@ -369,7 +495,7 @@ button.metric:active { background: var(--card-2); }
   font-size: 28px;
   line-height: 34px;
   font-weight: 700;
-  letter-spacing: -0.029em;
+  letter-spacing: -0.008em;
   color: var(--label);
 }
 .metric .unit {
@@ -528,9 +654,10 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ex-name {
   flex: 1;
   min-width: 0;
+  font-family: var(--font-serif);
   font-size: 20px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.012em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -612,11 +739,11 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   background: none;
   border: none;
   padding: 0 4px;
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-serif);
   font-size: 40px;
   line-height: 46px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.005em;
   font-variant-numeric: tabular-nums;
   color: var(--label);
 }
@@ -629,10 +756,10 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .tape .readout input {
   width: 160px;
   text-align: center;
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-serif);
   font-size: 40px;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.005em;
   padding: 0 4px;
   background: var(--card-3);
 }
@@ -703,14 +830,15 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .restbar.over .progress { background: rgba(255, 159, 10, 0.18); }
 .restbar > * { position: relative; }
 .restbar .time {
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-serif);
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   min-width: 62px;
 }
 .restbar.over .time { color: var(--orange); }
+.restbar button { white-space: nowrap; }
 .restbar .ctx {
   font-size: 13px;
   letter-spacing: 0;
@@ -748,6 +876,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   from { transform: translateY(100%); }
   to { transform: none; }
 }
+.sheet-drag { touch-action: none; cursor: grab; }
 .sheet .grab {
   width: 36px;
   height: 5px;
@@ -763,6 +892,37 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   font-weight: 600;
   letter-spacing: -0.03em;
 }
+
+/* ---------------------------------------------------------------- *
+ *  Switch: the system control, drawn rather than borrowed
+ * ---------------------------------------------------------------- */
+.switch-row { justify-content: space-between; gap: 12px; }
+.switch {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  margin: 0;
+  width: 51px;
+  height: 31px;
+  border-radius: 999px;
+  background: var(--fill-3);
+  position: relative;
+  transition: background 250ms var(--ease);
+}
+.switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.35);
+  transition: transform 250ms var(--spring);
+}
+.switch:checked { background: var(--accent); }
+.switch:checked::after { transform: translateX(20px); }
 
 /* ---------------------------------------------------------------- *
  *  Info popover, the show-do-not-tell affordance
@@ -814,10 +974,10 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   color: var(--label-2);
 }
 .stat .value {
-  font-family: ui-rounded, 'SF Pro Rounded', -apple-system, system-ui, sans-serif;
+  font-family: var(--font-serif);
   font-size: 22px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
   margin-top: 2px;
 }

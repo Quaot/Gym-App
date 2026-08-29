@@ -6,6 +6,7 @@ import { fmtDate, fmtDuration } from '../lib/util'
 import { finishedSessions, sessionSetCount, sessionVolume } from '../lib/history'
 import type { DayTemplate, Session } from '../types'
 import { Sheet } from '../components/Sheet'
+import { Screen } from '../app/Screen'
 import { IconChevron, IconDumbbell, IconFlame } from '../components/icons'
 
 /** Next day in the rotation after whatever was trained last. */
@@ -61,19 +62,16 @@ export const Home = () => {
   }
 
   return (
-    <>
-      <div className="large-title">
-        <h1>{greeting()}</h1>
-        <div className="sub">
-          {new Date().toLocaleDateString(undefined, {
-            weekday: 'long',
-            day: 'numeric',
-            month: 'long',
-          })}
-        </div>
-      </div>
-
-      <main className="main">
+    <Screen
+      id="today"
+      title={greeting()}
+      subtitle={new Date().toLocaleDateString(undefined, {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      })}
+      large
+    >
         {active && (
           <div className="group">
             <button className="metric" style={{ '--metric': 'var(--green)' } as React.CSSProperties}
@@ -199,8 +197,6 @@ export const Home = () => {
             )
           })}
         </div>
-      </main>
-
       {orphan && (
         <Sheet title="Unfinished workout" onClose={() => setOrphan(null)}>
           <div className="stack">
@@ -225,6 +221,6 @@ export const Home = () => {
           </div>
         </Sheet>
       )}
-    </>
+    </Screen>
   )
 }

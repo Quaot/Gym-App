@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useAppSelector, dispatch } from '../store/store'
-import { navigate, back } from '../lib/router'
+import { navigate } from '../lib/router'
 import { Bars, CalendarHeatmap, LineChart, Scatter } from '../components/charts'
-import { IconBack, IconMoon } from '../components/icons'
+import { IconMoon } from '../components/icons'
+import { Screen } from '../app/Screen'
+import { BackButton } from '../app/BackButton'
 import {
   calendarDays, exercisesByRecency, exerciseTrend, memoized, weeklyBuckets,
 } from '../lib/analytics'
@@ -119,15 +121,7 @@ export const ProgressScreen = () => {
   const monthName = monthStart.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 
   return (
-    <>
-      <header className="topbar">
-        <h1>
-          Progress
-          <span className="sub">{finished.length} workouts on record</span>
-        </h1>
-      </header>
-
-      <main className="main">
+    <Screen id="progress" title="Progress" subtitle={`${finished.length} workouts on record`} large>
         <SleepQuickLog />
 
         <div className="section-header">Weekly volume ({unit})</div>
@@ -196,6 +190,7 @@ export const ProgressScreen = () => {
 
         <div className="section-header">Exercises</div>
         {exercises.length === 0 && <div className="empty">Nothing logged yet.</div>}
+        <div className="group">
         {exercises.map((e) => {
           const pb = personalBest(state, e.id)
           const bodyweight = state.catalog[e.id]?.bodyweight ?? false
@@ -214,8 +209,8 @@ export const ProgressScreen = () => {
             </button>
           )
         })}
-      </main>
-    </>
+        </div>
+    </Screen>
   )
 }
 
@@ -257,16 +252,12 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
   const pb = personalBest(state, exerciseId)
 
   return (
-    <>
-      <header className="topbar">
-        <button className="btn-plain" aria-label="Back" onClick={back}><IconBack /></button>
-        <h1>
-          {exercise?.name ?? 'Exercise'}
-          <span className="sub">{trend.length} sessions logged</span>
-        </h1>
-      </header>
-
-      <main className="main">
+    <Screen
+      id={`progress/${exerciseId}`}
+      title={exercise?.name ?? 'Exercise'}
+      subtitle={`${trend.length} sessions logged`}
+      leading={<BackButton />}
+    >
         <div className="seg" role="tablist" aria-label="Time range">
           {RANGES.map((r) => (
             <button key={r.label} className={r.label === range.label ? 'on' : ''}
@@ -328,7 +319,6 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
             </span>
           </div>
         ))}
-      </main>
-    </>
+    </Screen>
   )
 }

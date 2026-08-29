@@ -7,6 +7,25 @@ find out whether sleep actually moves your numbers.
 Installable web app (PWA). Everything runs on your device and works with no
 signal. Nothing is uploaded, no accounts, nothing to pay for.
 
+## How it behaves as an app
+
+Add it to your Home Screen and it opens without browser furniture, on its own
+launch screen.
+
+- **Screens, not pages.** Each screen owns its scrolling under a fixed bar.
+  Drilling in slides the new screen over the old one; a swipe from the left
+  edge drags it back with your thumb, and letting go early springs it home.
+- **Large titles collapse** into the bar as you scroll, and every tab reopens
+  exactly where you left it.
+- **A workout rises from the bottom** the way a sheet does, since you enter it
+  from anywhere and leave it by finishing.
+- **Sheets drag away.** Pull one down past a third of its height, or flick it,
+  and it goes. The keyboard lifts a sheet instead of burying it.
+- **The screen stays awake** for the whole workout.
+- **Rest alerts** reach you when you have looked away, once you turn them on in
+  Settings. Notifications need the app on your Home Screen.
+- **New York** carries the titles and every number; SF carries the rest.
+
 ## Logging a workout
 
 - **Tape inputs.** Weight and reps sit on a ruler that scrolls under a needle.
@@ -60,19 +79,24 @@ is covered by tests in `src/lib/progression.test.ts`.
 ```bash
 npm install
 npm run dev        # local dev server
-npm test           # 212 unit tests: migration chain, reducer invariants,
+npm test           # 229 unit tests: migration chain, reducer invariants,
                    #   progression branches, warm-up generation, prefill,
                    #   timing, analytics, sleep merge, correlation, parser
-                   #   round-trips, preset and copy rules, sample data
+                   #   round-trips, preset and copy rules, sample data,
+                   #   navigation gestures, rest alerts
 npm run build      # production build into dist/
 npm run preview    # serve the production build on :4173
-node scripts/e2e.mjs   # 68-assertion Playwright suite against the preview:
+node scripts/e2e.mjs   # 84-assertion Playwright suite against the preview:
                    #   migration, poisoned storage, the workout loop, tape
                    #   gestures including fast drags, rest-timer persistence,
                    #   warm-up generation, cancel, sample data, charts, the
                    #   real Health zip import, back behaviour, dash-free copy,
-                   #   and 320px layout
+                   #   screen transitions, edge-swipe back, scroll memory,
+                   #   sheet dismissal, and 320px layout
 ```
+
+Icons and launch screens are drawn by `node scripts/assets.mjs`, so the whole
+set shares one palette.
 
 Architecture notes: a framework-free store (`useSyncExternalStore` + pure
 reducer; all ids/timestamps injected by action creators), per-slice persistence,

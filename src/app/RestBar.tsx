@@ -3,6 +3,8 @@ import { useAppSelector, dispatch } from '../store/store'
 import { useNow } from '../lib/useNow'
 import { fmtClock } from '../lib/util'
 import { chime } from '../lib/audio'
+import { notifyRestOver } from '../lib/notify'
+import { useWakeLock } from '../lib/wakeLock'
 import { navigate, useRoute } from '../lib/router'
 
 /**
@@ -19,6 +21,9 @@ export const RestBar = () => {
   const route = useRoute()
   const now = useNow(rest ? 250 : 5000)
 
+  // A workout should never be interrupted by the screen going dark.
+  useWakeLock(activeSession !== null)
+
   // Fire the chime exactly once per deadline, keyed by endsAt: +30s after
   // overtime moves the key and legitimately re-arms it (bug 12), while
   // re-renders and remounts do not re-fire it.
@@ -31,6 +36,7 @@ export const RestBar = () => {
     if (now >= rest.endsAt && firedFor.current !== rest.endsAt) {
       firedFor.current = rest.endsAt
       chime()
+      notifyRestOver(rest.exerciseName)
       navigator.vibrate?.([180, 90, 180])
     }
   }, [rest, now])
