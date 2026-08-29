@@ -38,10 +38,17 @@ The app ships with the six-day rotation already entered:
 | Pull 1 | Lat Pulldown, 4 feeder sets + failure set with a 30% drop |
 | Legs 1 | Squat, ramped to 85-90% |
 | Push 2 | Incline Barbell Bench Press 3×8/5/15 |
-| Pull 2 | 1-Arm Half-Kneeling Lat Pulldown 3×12-15 |
+| Pull 2 | Half-Kneeling Single-Arm Lat Pulldown 3×12-15 |
 | Legs 2 | Deadlift 1×5 |
 
 Each day carries its warm-up protocol, shown at the top of the session screen.
+
+The wording follows one house style, documented at the top of
+`src/lib/presets.ts` and enforced by `src/lib/presets.test.ts` — exercise names
+are Title Case, singular, and ordered modifier → equipment → movement; notes are
+full sentences that read what to do → load → cue; per-set instructions are always
+`Set 1 …; set 2 …`; loads are always a percentage of your 1RM or working weight.
+The tests fail if a new line drifts from it, so edits stay consistent.
 
 Some of the programming doesn't map onto plain sets and reps, so it lives in the
 exercise note you see while logging:
