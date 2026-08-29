@@ -1,5 +1,6 @@
 import type { AppState, DayTemplate, Program, Settings } from '../types'
 import { uid } from './util'
+import { pplProgram } from './presets'
 
 export const SCHEMA_VERSION = 1
 
@@ -13,15 +14,11 @@ export const defaultSettings = (): Settings => ({
 export const emptyDay = (name: string): DayTemplate => ({
   id: uid(),
   name,
+  notes: '',
   exercises: [],
 })
 
-/** Push / Pull / Legs shells — exercises are yours to fill in. */
-export const defaultProgram = (): Program => ({
-  id: uid(),
-  name: 'Push / Pull / Legs',
-  days: [emptyDay('Push'), emptyDay('Pull'), emptyDay('Legs')],
-})
+export const defaultProgram = (): Program => pplProgram()
 
 export const initialState = (): AppState => ({
   version: SCHEMA_VERSION,

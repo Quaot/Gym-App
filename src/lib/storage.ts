@@ -9,10 +9,15 @@ const hydrate = (raw: unknown): AppState => {
   const base = initialState()
   if (!raw || typeof raw !== 'object') return base
   const s = raw as Partial<AppState>
+  const program = s.program?.days
+    ? { ...s.program, days: s.program.days.map((d) => ({ ...d, notes: d.notes ?? '' })) }
+    : base.program
   return {
     version: SCHEMA_VERSION,
-    program: s.program?.days ? s.program : base.program,
-    sessions: Array.isArray(s.sessions) ? s.sessions : [],
+    program,
+    sessions: Array.isArray(s.sessions)
+      ? s.sessions.map((sess) => ({ ...sess, dayNotes: sess.dayNotes ?? '' }))
+      : [],
     activeSessionId: s.activeSessionId ?? null,
     settings: { ...base.settings, ...(s.settings ?? {}) },
   }

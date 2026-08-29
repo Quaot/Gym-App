@@ -17,8 +17,9 @@ nothing to pay for.
   needs no mental arithmetic.
 - **Rest timer.** Starts automatically when you tick a set, counts overtime, and
   chimes/vibrates when rest is up. Per-exercise rest times.
-- **Your own program.** Push / Pull / Legs by default, but days and exercises
-  are yours to edit, reorder, and rename.
+- **Six-day PPL built in.** Push 1 → Pull 1 → Legs 1 → Push 2 → Pull 2 → Legs 2,
+  pre-loaded with every exercise, set, rep range and cue. The home screen marks
+  whichever day comes next in the rotation. Everything is editable.
 - **Paste a workout in.** Rather than typing a routine in field by field, paste
   the list (see below).
 - **History and progress.** Per-workout summaries with volume and duration, plus
@@ -27,10 +28,44 @@ nothing to pay for.
   personal bests and from what carries forward.
 - **Backups.** Export/import your whole history as a JSON file.
 
-## Setting up your program
+## The built-in program
 
-Open **Program → Edit** on a day, then **Paste list**, and paste one exercise
-per line:
+The app ships with the six-day rotation already entered:
+
+| Day | Opener |
+| --- | --- |
+| Push 1 | Barbell Bench Press 1×3-5 |
+| Pull 1 | Lat Pulldown, 4 feeder sets + failure set with a 30% drop |
+| Legs 1 | Squat, ramped to 85-90% |
+| Push 2 | Incline Barbell Bench Press 3×8/5/15 |
+| Pull 2 | 1-Arm Half-Kneeling Lat Pulldown 3×12-15 |
+| Legs 2 | Deadlift 1×5 |
+
+Each day carries its warm-up protocol, shown at the top of the session screen.
+
+Some of the programming doesn't map onto plain sets and reps, so it lives in the
+exercise note you see while logging:
+
+- **Supersets** (press-around + pec stretch, pressdown + overhead extension,
+  pullover + stretch) are consecutive exercises, with the pairing in the note
+  and a short rest on the first of the pair.
+- **Timed holds** (pec stretch, lat stretch) are logged with the seconds in the
+  reps field — `2 × 30` means two 30-second holds.
+- **Feeder sets and percentage ramps** (lat pulldown RPE ladder, the squat and
+  deadlift pyramids) are described in the note. Tap a set's number while logging
+  to mark it a warm-up so it stays out of your personal bests.
+- **AMRAP** sets (pull-ups, diamond push-ups) are entered as a wide rep range.
+
+**Settings → Reload the built-in program** restores all of this if you edit your
+way into a corner. It replaces your days only — logged workouts are kept.
+
+## Editing it, or setting up your own
+
+Days, exercises, sets, rep ranges, rest times and notes are all editable under
+**Program**, and you can add or delete days entirely.
+
+To enter a routine in bulk, open **Program → Edit** on a day, then **Paste
+list**, and paste one exercise per line:
 
 ```
 1. Barbell Bench Press — 3x6-8 (rest 3 min)

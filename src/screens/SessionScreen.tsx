@@ -217,6 +217,13 @@ export const SessionScreen = ({ session }: { session: Session }) => {
       </header>
 
       <main className="main">
+        {session.dayNotes && (
+          <div className="card tight">
+            <div className="tiny muted">Warm-up</div>
+            <div className="small" style={{ whiteSpace: 'pre-wrap' }}>{session.dayNotes}</div>
+          </div>
+        )}
+
         {session.exercises.map((e, i) => (
           <ExerciseCard
             key={e.id} session={session} exercise={e} timer={timer}

@@ -11,6 +11,7 @@ export const SettingsScreen = () => {
   const { settings } = state
   const fileRef = useRef<HTMLInputElement>(null)
   const [confirmReset, setConfirmReset] = useState(false)
+  const [confirmPreset, setConfirmPreset] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
 
   const download = () => {
@@ -72,6 +73,15 @@ export const SettingsScreen = () => {
           </label>
         </div>
 
+        <div className="section-title">Program</div>
+        <div className="card tight stack">
+          <p className="tiny muted">
+            Restores the built-in six-day push/pull/legs rotation. This replaces your current days
+            and exercises; logged workouts are kept.
+          </p>
+          <button className="btn block" onClick={() => setConfirmPreset(true)}>Reload the built-in program</button>
+        </div>
+
         <div className="section-title">Your data</div>
         <div className="card tight stack">
           <p className="tiny muted">
@@ -95,6 +105,17 @@ export const SettingsScreen = () => {
           <div className="stack">
             <p className="small">{message}</p>
             <button className="btn primary block" onClick={() => setMessage(null)}>OK</button>
+          </div>
+        </Sheet>
+      )}
+
+      {confirmPreset && (
+        <Sheet title="Reload the built-in program?" onClose={() => setConfirmPreset(false)}>
+          <div className="stack">
+            <p className="small muted">Any edits you've made to your days and exercises will be replaced.</p>
+            <button className="btn primary block"
+              onClick={() => { dispatch({ type: 'loadPreset' }); setConfirmPreset(false) }}>Reload</button>
+            <button className="btn ghost block" onClick={() => setConfirmPreset(false)}>Cancel</button>
           </div>
         </Sheet>
       )}
