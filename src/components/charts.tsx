@@ -256,7 +256,9 @@ export const CalendarHeatmap = ({
           const col = idx % 7
           const row = Math.floor(idx / 7)
           // Sequential: one hue, deeper with more sets.
-          const alpha = sets === 0 ? 0 : 0.25 + 0.75 * (sets / max)
+          // Caps below full strength: a month of training should read as a wash,
+            // not as a wall of colour.
+            const alpha = sets === 0 ? 0 : 0.18 + 0.52 * (sets / max)
           const isToday = isThisMonth && day === today.getDate()
           return (
             <g key={day}>
@@ -264,13 +266,15 @@ export const CalendarHeatmap = ({
                 className="heatmap-cell"
                 x={col * (cell + gap)} y={14 + row * (cell + gap)}
                 width={cell} height={cell}
-                fill={sets === 0 ? 'var(--surface-2)' : `rgba(74, 222, 128, ${alpha.toFixed(2)})`}
+                fill={sets === 0
+                  ? 'var(--surface-2)'
+                  : `rgb(var(--accent-rgb) / ${alpha.toFixed(2)})`}
                 stroke={isToday ? 'var(--accent)' : 'none'} strokeWidth={isToday ? 1.5 : 0}
               />
               <text
                 x={col * (cell + gap) + cell / 2} y={14 + row * (cell + gap) + cell / 2 + 3.5}
                 textAnchor="middle" fontSize={10.5} fontWeight={sets > 0 ? 700 : 400}
-                fill={sets > 0 && alpha > 0.6 ? 'var(--on-accent)' : 'var(--muted)'}
+                fill={sets > 0 && alpha > 0.55 ? 'var(--on-accent)' : 'var(--muted)'}
               >
                 {day}
               </text>
