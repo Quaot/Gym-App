@@ -62,7 +62,12 @@ are identified by what they are rather than where they sit.
   the loadable grid, and never above your working set. Set a top set of 185 and
   the ramp appears under it; change it to 225 and the ramp moves with it. Edit
   a warm-up by hand and it stops following, because then it is yours
+- **The bar, drawn**: every barbell set shows the loaded bar with the plates on
+  it, in the colours gyms actually use, so you read it the way you read a rack
 - **Plate math** under every barbell set: what to hang on each side
+- **Where a lift is heading**: on the exercise screen, a line through the
+  sessions you have logged reads off the date you reach the next round number.
+  It stays quiet unless the trend is real, and shows its working on a tap
 - **Records** are marked the moment you beat one, and again in the summary when
   you finish
 - **Rest timer** floats over every screen, survives navigation and reloads,
@@ -106,14 +111,14 @@ is covered by tests in `src/lib/progression.test.ts`.
 ```bash
 npm install
 npm run dev        # local dev server
-npm test           # 287 unit tests: migration chain, reducer invariants,
+npm test           # 307 unit tests: migration chain, reducer invariants,
                    #   progression branches, warm-up generation, prefill,
                    #   timing, analytics, sleep merge, correlation, parser
                    #   round-trips, preset and copy rules, sample data,
                    #   navigation gestures, rest alerts
 npm run build      # production build into dist/
 npm run preview    # serve the production build on :4173
-node scripts/e2e.mjs   # 97-assertion Playwright suite against the preview:
+node scripts/e2e.mjs   # 106-assertion Playwright suite against the preview:
                    #   migration, poisoned storage, the workout loop, tape
                    #   gestures including fast drags, rest-timer persistence,
                    #   warm-up generation, cancel, sample data, charts, the
