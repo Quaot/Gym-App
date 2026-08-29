@@ -5,7 +5,7 @@ see exactly what you lifted last time, watch a month or a year of progress, and
 find out whether sleep actually moves your numbers.
 
 Installable web app (PWA). Everything runs on your device and works with no
-signal — nothing is uploaded, no accounts, nothing to pay for.
+signal. Nothing is uploaded, no accounts, nothing to pay for.
 
 ## Logging a workout
 
@@ -52,39 +52,40 @@ is covered by tests in `src/lib/progression.test.ts`.
 - **Export/import backup** (JSON) in Settings; exports are Safari-proof.
 - Malformed or hand-edited data is repaired, not rejected: bad entries are
   dropped individually and the rest survive. If rendering ever crashes anyway,
-  an error screen still offers *Download backup* and *Reset* — no white screen
-  of death.
-- v1 data (the previous release) migrates automatically on first launch.
+  an error screen still offers *Download backup* and *Reset*.
+- Data from earlier releases migrates automatically on first launch.
 
 ## Development
 
 ```bash
 npm install
 npm run dev        # local dev server
-npm test           # unit suite (150 tests: migration, reducer invariants,
-                   #   prefill, timing, analytics, sleep merge, correlation,
-                   #   parser round-trips, preset style rules)
+npm test           # 212 unit tests: migration chain, reducer invariants,
+                   #   progression branches, warm-up generation, prefill,
+                   #   timing, analytics, sleep merge, correlation, parser
+                   #   round-trips, preset and copy rules, sample data
 npm run build      # production build into dist/
 npm run preview    # serve the production build on :4173
-node scripts/e2e.mjs   # 48-assertion Playwright suite against the preview:
-                   #   v1 migration, poisoned storage, the full workout loop,
-                   #   tape gestures, rest-timer persistence, paste round-trip,
-                   #   split switching, charts, the real Health-zip import,
-                   #   hardware-back behavior, and 320px layout
+node scripts/e2e.mjs   # 68-assertion Playwright suite against the preview:
+                   #   migration, poisoned storage, the workout loop, tape
+                   #   gestures including fast drags, rest-timer persistence,
+                   #   warm-up generation, cancel, sample data, charts, the
+                   #   real Health zip import, back behaviour, dash-free copy,
+                   #   and 320px layout
 ```
 
 Architecture notes: a framework-free store (`useSyncExternalStore` + pure
 reducer; all ids/timestamps injected by action creators), per-slice persistence,
-decoder-validated state with v1→v2 migration, hand-rolled SVG charts, and a
-Web Worker + fflate for the Health import. The only runtime dependencies are
-React and fflate.
+decoder-validated state with a v1 to v3 migration chain, hand-rolled SVG
+charts, and a Web Worker plus fflate for the Health import. The only runtime
+dependencies are React and fflate.
 
 ## Deploying
 
 Pushing to `main` builds and publishes to GitHub Pages via
 `.github/workflows/deploy.yml` (unit tests gate the deploy). Enable it once
-under **Settings → Pages → Source: GitHub Actions**; the app then lives at
+under **Settings, Pages, Source: GitHub Actions**. The app then lives at
 `https://<owner>.github.io/Gym-App/`. Add it to your home screen from there.
 
-The base path comes from `APP_BASE` (defaults to `/Gym-App/`);
+The base path comes from `APP_BASE`, which defaults to `/Gym-App/`. Use
 `APP_BASE=/ npm run build` for a custom domain.
