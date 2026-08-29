@@ -25,6 +25,8 @@ launch screen.
 - **Rest alerts** reach you when you have looked away, once you turn them on in
   Settings. Notifications need the app on your Home Screen
 - **New York** carries the titles and every number, and SF carries the rest
+- **A colour per section**: Today blue, the workout purple, Program orange,
+  Progress teal, History indigo, Settings graphite
 - **Liquid glass** for the control layer: the tab bar is a floating capsule,
   and bars, buttons, sheets and the rest timer blur and brighten whatever
   passes beneath them, with a specular rim along the top edge. Content itself
@@ -33,18 +35,36 @@ launch screen.
   sentences. Both rules are enforced by tests, in the source and against the
   rendered screen
 
+## The split
+
+Ten days in rotation: Push 1, Pull 1, Legs 1, Upper 1, Lower 1, Push 2, Pull 2,
+Legs 2, Upper 2, Lower 2. Each pattern gets one heavy exposure and one
+hypertrophy exposure per cycle, and the two Upper days share no exercise. Today
+suggests the next day in the rotation, and you can start any day you like.
+
+A five day Push, Pull, Legs, Upper, Lower split is there too, under Splits on
+the Program screen. History follows a movement between splits, since exercises
+are identified by what they are rather than where they sit.
+
 ## Logging a workout
 
 - **Tape inputs.** Weight and reps sit on a ruler that scrolls under a needle.
-  Drag it with a tick at every detent, flick it to travel, or tap the number to
-  type. The gesture runs on animation frames and never touches React, so it
-  tracks your thumb without skipping
+  Drag it, flick it, step it one detent at a time, or tap the number to type.
+  The tape owns the gesture outright, so a diagonal thumb cannot hand it to the
+  page, a second finger is ignored, and a cancelled pointer keeps the number
+  your finger reached. A throw commits where it lands at the moment you let go,
+  so a set can never be logged with the value the tape was leaving
 - **One set at a time.** Finished and pending sets collapse to single lines.
   Completing one collapses it, advances to the next, and starts the rest timer
 - **It tells you what to lift.** Every working set is pre-filled with what the
   progression engine suggests. Hold **Why** to read the reasoning
 - **Warm-ups build themselves** from the weight you are about to work with, on
-  the loadable grid, and never above your working set
+  the loadable grid, and never above your working set. Set a top set of 185 and
+  the ramp appears under it; change it to 225 and the ramp moves with it. Edit
+  a warm-up by hand and it stops following, because then it is yours
+- **Plate math** under every barbell set: what to hang on each side
+- **Records** are marked the moment you beat one, and again in the summary when
+  you finish
 - **Rest timer** floats over every screen, survives navigation and reloads,
   chimes, and counts overtime
 - **Cancel** sits in the workout itself, one confirmation away
@@ -86,14 +106,14 @@ is covered by tests in `src/lib/progression.test.ts`.
 ```bash
 npm install
 npm run dev        # local dev server
-npm test           # 229 unit tests: migration chain, reducer invariants,
+npm test           # 287 unit tests: migration chain, reducer invariants,
                    #   progression branches, warm-up generation, prefill,
                    #   timing, analytics, sleep merge, correlation, parser
                    #   round-trips, preset and copy rules, sample data,
                    #   navigation gestures, rest alerts
 npm run build      # production build into dist/
 npm run preview    # serve the production build on :4173
-node scripts/e2e.mjs   # 84-assertion Playwright suite against the preview:
+node scripts/e2e.mjs   # 97-assertion Playwright suite against the preview:
                    #   migration, poisoned storage, the workout loop, tape
                    #   gestures including fast drags, rest-timer persistence,
                    #   warm-up generation, cancel, sample data, charts, the
@@ -107,7 +127,7 @@ set shares one palette.
 
 Architecture notes: a framework-free store (`useSyncExternalStore` + pure
 reducer; all ids/timestamps injected by action creators), per-slice persistence,
-decoder-validated state with a v1 to v3 migration chain, hand-rolled SVG
+decoder-validated state with a v1 to v4 migration chain, hand-rolled SVG
 charts, and a Web Worker plus fflate for the Health import. The only runtime
 dependencies are React and fflate.
 

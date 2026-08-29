@@ -20,7 +20,11 @@ export const useWakeLock = (active: boolean) => {
     const acquire = async () => {
       if (cancelled || document.visibilityState !== 'visible') return
       try {
-        sentinel = await api.request('screen')
+        const held = await api.request('screen')
+        // The workout can end while the request is in flight; releasing it
+        // here is the difference between a dark screen and a dead battery.
+        if (cancelled) void held.release().catch(() => undefined)
+        else sentinel = held
       } catch {
         // Denied or unsupported: the workout carries on regardless.
       }

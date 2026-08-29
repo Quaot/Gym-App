@@ -1,4 +1,4 @@
-import type { WarmupStep } from '../types'
+import type { LoggedSet, WarmupStep } from '../types'
 import { roundToStep } from './util'
 
 export interface WarmupRow {
@@ -37,3 +37,45 @@ export const warmupPct = (weight: number, workingWeight: number): number =>
   workingWeight > 0 ? weight / workingWeight : 0
 
 export { roundToStep }
+
+/**
+ * The set list a working weight implies, given what is already there.
+ *
+ * Warm-up rows are generated, not typed, so they follow the weight you are
+ * about to lift: they appear the first time that weight is known, and they
+ * move with it if it changes before you start. Anything you have already
+ * logged is untouchable, and working sets are never reordered or rewritten.
+ * Returns the same array when nothing needs to change, so a caller can use
+ * identity to decide whether to dispatch.
+ */
+export const reconcileWarmups = (
+  sets: LoggedSet[],
+  plan: WarmupStep[],
+  workingWeight: number | null,
+  increment: number,
+  makeId: () => string,
+): LoggedSet[] => {
+  const done = sets.filter((s) => s.warmup && s.done)
+  const working = sets.filter((s) => !s.warmup)
+  const pending = sets.filter((s) => s.warmup && !s.done)
+
+  const wanted = warmupRows(plan, workingWeight, increment)
+  // Rows already logged count against the plan: you do not warm up twice.
+  const remaining = wanted.slice(done.length)
+
+  const same =
+    remaining.length === pending.length &&
+    remaining.every((row, i) => pending[i].weight === row.weight && pending[i].reps === row.reps)
+  if (same) return sets
+
+  const rebuilt: LoggedSet[] = remaining.map((row, i) => ({
+    id: pending[i]?.id ?? makeId(),
+    weight: row.weight,
+    reps: row.reps,
+    done: false,
+    warmup: true,
+    completedAt: null,
+  }))
+
+  return [...done, ...rebuilt, ...working]
+}

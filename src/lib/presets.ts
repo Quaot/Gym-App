@@ -127,7 +127,11 @@ export const setPresetUnit = (unit: Unit): void => {
 
 /**
  * The six day push/pull/legs rotation. Days run in order:
- * Push 1, Pull 1, Legs 1, Push 2, Pull 2, Legs 2.
+ * Push 1, Pull 1, Legs 1, Upper 1, Lower 1, Push 2, Pull 2, Legs 2, Upper 2,
+ * Lower 2. Ten days, so each pattern gets one heavy exposure and one
+ * hypertrophy exposure per cycle: Legs 1 squats heavy and Lower 2 squats for
+ * reps, Legs 2 pulls heavy and Lower 1 hinges for reps, and the two Upper
+ * days share no exercise with each other.
  *
  * Warm-up ramps live in each exercise's warmups array, so the app computes
  * the weights. Notes hold only what data cannot: cues and set variations.
@@ -187,6 +191,34 @@ export const pplProgram = (): Program => ({
       ex('Decline Plate Crunch', 3, 10, 12, 60, body()),
     ]),
 
+    day('Upper 1', UPPER_WARMUP, [
+      ex('Incline Barbell Bench Press', 3, 6, 8, 180, heavy('barbell'),
+        'Stop one rep short of failure on every set'),
+      ex('Omni-Grip Chest-Supported Row', 3, 10, 12, 120, compound('machine'),
+        'Change your grip each set'),
+      ex('Machine Shoulder Press', 3, 10, 12, 120, compound('machine')),
+      ex('Half-Kneeling Single-Arm Lat Pulldown', 3, 12, 15, 120, compound('cable'),
+        'Per arm'),
+      ex('Machine Lateral Raise', 3, 15, 20, 90, iso('machine'),
+        'Constant tension, no pause at the bottom'),
+      ex('Cross-Body Triceps Extension', 3, 10, 12, 90, iso('cable')),
+      ex('EZ-Bar Biceps Curl', 3, 8, 10, 120, iso('barbell', true)),
+    ]),
+
+    day('Lower 1', LEG_WARMUP, [
+      ex('Romanian Deadlift', 4, 8, 10, 180, compound('barbell'),
+        'Push the hips back and stop where the stretch ends'),
+      ex('Leg Press', 3, 15, 20, 120, compound('machine'),
+        'Feet low on the platform'),
+      ex('Seated Leg Curl', 4, 10, 12, 90, iso('machine'),
+        'Pause a beat at full contraction'),
+      ex('Walking Lunge', 2, 10, 10, 120, iso('dumbbell'),
+        '10 reps per leg, full depth on every step'),
+      ex('Leg Press Toe Press', 4, 12, 15, 90, iso('machine'),
+        'Feet neutral every set'),
+      ex('Decline Plate Crunch', 3, 12, 15, 60, body()),
+    ]),
+
     day('Push 2', PUSH_2_WARMUP, [
       ex('Incline Barbell Bench Press', 3, 5, 15, 180, heavy('barbell'),
         'Set 1 moderate for 8; set 2 heavy for 5; set 3 light for 15'),
@@ -224,6 +256,35 @@ export const pplProgram = (): Program => ({
       ex('Slow-Eccentric Leg Extension', 3, 8, 10, 90, iso('machine'),
         'Lower slowly every rep'),
       ex('Seated Calf Raise', 4, 15, 20, 90, iso('machine')),
+      ex('Roman Chair Leg Raise', 3, 10, 20, 60, body()),
+    ]),
+
+    day('Upper 2', UPPER_WARMUP, [
+      ex('Barbell Larsen Press', 3, 8, 10, 180, compound('barbell'),
+        'Legs straight on the floor; no leg drive'),
+      ex('Pull-Up', 3, 6, 10, 150, body(),
+        'Hang weight from a belt once you clear 10 clean reps'),
+      ex('Standing Arnold Press', 3, 8, 10, 150, compound('dumbbell')),
+      ex('Kroc Row', 3, 10, 12, 120, compound('dumbbell'),
+        'Per arm'),
+      ex('Cross-Body Cable Y-Raise', 3, 12, 15, 90, iso('cable')),
+      ex('Reverse Pec Deck', 3, 12, 15, 90, iso('machine')),
+      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120, iso('barbell', true),
+        'Rest the bar on the floor between reps'),
+      ex('Overhead Cable Biceps Curl', 3, 10, 12, 90, iso('cable')),
+    ]),
+
+    day('Lower 2', LEG_WARMUP, [
+      ex('Paused Squat', 3, 8, 10, 180, heavy('barbell'),
+        'Pause in the hole and drive out with no bounce'),
+      ex('Glute-Ham Raise', 3, 6, 10, 120, body(),
+        'Drive the hips through at the top'),
+      ex('Slow-Eccentric Leg Extension', 4, 10, 12, 90, iso('machine'),
+        'Lower slowly every rep'),
+      ex('Seated Leg Curl', 3, 15, 20, 90, iso('machine'),
+        'Stop two reps short of failure'),
+      ex('Seated Calf Raise', 4, 12, 15, 90, iso('machine'),
+        'Pause at the bottom of every rep'),
       ex('Roman Chair Leg Raise', 3, 10, 20, 60, body()),
     ]),
   ],

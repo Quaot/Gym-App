@@ -74,7 +74,7 @@ export const Home = () => {
     >
         {active && (
           <div className="group">
-            <button className="metric" style={{ '--metric': 'var(--green)' } as React.CSSProperties}
+            <button className="metric" style={{ '--metric': 'var(--purple)' } as React.CSSProperties}
               onClick={() => navigate('/session')}>
               <div className="metric-head">
                 <IconDumbbell />

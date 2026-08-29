@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useAppSelector, dispatch } from '../store/store'
 import { act } from '../store/actions'
-import { navigate } from '../lib/router'
+import { navigate, replaceRoute } from '../lib/router'
 import { Sheet } from '../components/Sheet'
 import { IconTrash } from '../components/icons'
 import { Screen } from '../app/Screen'
@@ -451,7 +451,7 @@ export const DayEditor = ({ dayId }: { dayId: string }) => {
           <div className="stack">
             <p className="t-footnote label-2">Saved workouts stay in your history</p>
             <button className="btn-tinted destructive block"
-              onClick={() => { dispatch({ type: 'deleteDay', programId: program.id, dayId }); navigate('/program') }}>
+              onClick={() => { dispatch({ type: 'deleteDay', programId: program.id, dayId }); replaceRoute('/program') }}>
               Delete day
             </button>
             <button className="btn-gray block" onClick={() => setConfirmDelete(false)}>Cancel</button>

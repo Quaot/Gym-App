@@ -86,3 +86,39 @@ export const sessionSetCount = (s: Session): number =>
 
 export const sessionDoneSetCount = (s: Session): number =>
   s.exercises.reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0)
+
+export interface Record1RM {
+  /** The set that set it. */
+  set: LoggedSet
+  /** Its estimated one rep max, or its reps for a bodyweight movement. */
+  score: number
+  /** What it beat, if anything. */
+  previous: number
+}
+
+/**
+ * Records set during a session, judged against everything logged before it.
+ * A record is worth showing the moment it happens, not at the end of the
+ * month, so this runs over the live session as you log.
+ */
+export const recordsIn = (
+  state: Pick<AppState, 'sessions' | 'catalog'>,
+  session: Session,
+): Map<ID, Record1RM> => {
+  const out = new Map<ID, Record1RM>()
+  for (const exercise of session.exercises) {
+    const bodyweight = state.catalog[exercise.exerciseId]?.bodyweight ?? false
+    const prior = personalBest(
+      { ...state, sessions: state.sessions } as AppState,
+      exercise.exerciseId,
+      session.id,
+    )
+    const previous = prior ? est1RM(prior, bodyweight) : 0
+    const best = bestSet(exercise, bodyweight)
+    if (!best) continue
+    const score = est1RM(best, bodyweight)
+    // A first ever session is not a record, it is a baseline.
+    if (previous > 0 && score > previous) out.set(exercise.id, { set: best, score, previous })
+  }
+  return out
+}

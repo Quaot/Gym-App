@@ -1,7 +1,7 @@
 export type ID = string
 export type Unit = 'kg' | 'lb'
 
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 /**
  * Catalog entry — the stable identity of a movement. Templates and logged
@@ -128,6 +128,8 @@ export interface Settings {
   tickSound: boolean
   /** Your bodyweight, used to size jumps on bodyweight movements. */
   bodyweight: number
+  /** The bar you load, so the app can tell you which plates to hang on it. */
+  barWeight: number
 }
 
 export interface AppState {
