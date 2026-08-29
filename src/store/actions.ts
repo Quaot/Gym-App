@@ -1,11 +1,13 @@
 import type {
-  AppState, DayTemplate, Exercise, ID, LoggedSet, Program, Session,
+  AppState, DayTemplate, Exercise, ID, LoggedSet, Program, Session, SessionExercise,
 } from '../types'
 import type { Action } from './reducer'
 import { dispatch, getStore } from './store'
 import { uid } from '../lib/util'
 import { resolveExercise } from '../lib/catalog'
 import { prefillFor } from '../lib/prefill'
+import { suggestionFor } from '../lib/suggest'
+import { warmupRows } from '../lib/warmups'
 import { startRestUnlockingAudio } from '../lib/audio'
 
 /**
@@ -50,16 +52,33 @@ export const act = {
       startedAt: Date.now(),
       finishedAt: null,
       notes: '',
-      exercises: day.exercises.map((t) => ({
-        id: uid(),
-        exerciseId: t.exerciseId,
-        name: s.catalog[t.exerciseId]?.name ?? 'Exercise',
-        repLow: t.repLow,
-        repHigh: t.repHigh,
-        restSec: t.restSec,
-        notes: t.notes,
-        sets: Array.from({ length: Math.max(1, t.sets) }, newSet),
-      })),
+      exercises: day.exercises.map((t) => {
+        const exercise: SessionExercise = {
+          id: uid(),
+          exerciseId: t.exerciseId,
+          name: s.catalog[t.exerciseId]?.name ?? 'Exercise',
+          repLow: t.repLow,
+          repHigh: t.repHigh,
+          repCap: t.repCap,
+          restSec: t.restSec,
+          warmupPlan: t.warmups,
+          notes: t.notes,
+          sets: Array.from({ length: Math.max(1, t.sets) }, newSet),
+        }
+
+        // Warm-ups ride on the weight you are about to work with, so they are
+        // built from the progression suggestion rather than typed in again.
+        const planned = suggestionFor(s, exercise).suggestion.weight
+        const increment = s.catalog[t.exerciseId]?.increment ?? s.settings.weightStep
+        const rows = warmupRows(t.warmups, planned, increment)
+        if (rows.length > 0) {
+          exercise.sets = [
+            ...rows.map((row) => ({ ...newSet(), weight: row.weight, reps: row.reps, warmup: true })),
+            ...exercise.sets,
+          ]
+        }
+        return exercise
+      }),
     }
     dispatch({ type: 'startSession', session })
   },
@@ -106,7 +125,7 @@ export const act = {
 
   addSessionExercise(name: string): void {
     const s = getStore().getState()
-    const exercise = resolveExercise(s.catalog, name)
+    const exercise = resolveExercise(s.catalog, name, s.settings.unit)
     if (!s.catalog[exercise.id]) dispatch({ type: 'upsertCatalog', exercise })
     dispatch({
       type: 'addSessionExercise',
@@ -116,7 +135,9 @@ export const act = {
         name: exercise.name,
         repLow: 8,
         repHigh: 12,
+        repCap: 17,
         restSec: s.settings.defaultRestSec,
+        warmupPlan: [],
         notes: '',
         sets: [newSet()],
       },
@@ -129,7 +150,7 @@ export const act = {
 
   addTemplate(programId: ID, dayId: ID, name: string): void {
     const s = getStore().getState()
-    const exercise = resolveExercise(s.catalog, name)
+    const exercise = resolveExercise(s.catalog, name, s.settings.unit)
     if (!s.catalog[exercise.id]) dispatch({ type: 'upsertCatalog', exercise })
     dispatch({
       type: 'addTemplate',
@@ -141,7 +162,9 @@ export const act = {
         sets: 3,
         repLow: 8,
         repHigh: 12,
+        repCap: 17,
         restSec: s.settings.defaultRestSec,
+        warmups: [],
         notes: '',
       },
     })

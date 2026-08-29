@@ -5,9 +5,12 @@ import { act } from '../store/actions'
 import { switchTab } from '../lib/router'
 import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
-import { IconBack, IconCheck, IconTrash } from '../components/icons'
+import { Screen } from '../app/Screen'
+import { IconCheck, IconTrash } from '../components/icons'
 import { fmtClock, fmtWeight } from '../lib/util'
 import { prefillFor } from '../lib/prefill'
+import { suggestionFor } from '../lib/suggest'
+import { InfoPopover } from '../components/InfoPopover'
 import { lastPerformance, workingSets, sessionDoneSetCount } from '../lib/history'
 import { restBefore } from '../lib/timing'
 import { useNow } from '../lib/useNow'
@@ -29,11 +32,12 @@ const SetRow = ({
   onDone: () => void
 }) => {
   const settings = useAppSelector((s) => s.settings)
-  const state = useAppSelector((s) => s)
+  const sessions = useAppSelector((s) => s.sessions)
+  const catalog = useAppSelector((s) => s.catalog)
   const set = exercise.sets[index]
   const fill = useMemo(
-    () => prefillFor(state, session, exercise, index),
-    [state, session, exercise, index],
+    () => prefillFor({ sessions, settings, catalog }, session, exercise, index),
+    [sessions, settings, catalog, session, exercise, index],
   )
 
   const displayOrdinal = set.warmup
@@ -52,19 +56,19 @@ const SetRow = ({
         onClick={onActivate}
         aria-label={`${set.warmup ? 'Warm-up set' : `Set ${displayOrdinal}`}${set.done ? ', done' : ''}: ${
           weight !== null ? `${fmtWeight(weight)} ${settings.unit} × ` : ''
-        }${reps ?? '—'} reps. Tap to edit.`}
+        }${reps ?? ''} reps, tap to edit`}
       >
         <span className="ord">{set.done ? <IconCheck /> : displayOrdinal}</span>
         <span className={`vals num${isGhost ? ' ghosted' : ''}`}>
           {weight !== null && (
             <>
               {fmtWeight(weight)}
-              <span className="tiny muted"> {settings.unit}</span>
+              <span className="t-caption label-2"> {settings.unit}</span>
               <span className="x">×</span>
             </>
           )}
-          {reps ?? '—'}
-          {weight === null && <span className="tiny muted"> reps</span>}
+          {reps ?? ''}
+          {weight === null && <span className="t-caption label-2"> reps</span>}
         </span>
         <span className="spacer" />
         {restedMs !== null && (
@@ -74,7 +78,8 @@ const SetRow = ({
     )
   }
 
-  const bodyweight = state.catalog[exercise.exerciseId]?.bodyweight ?? false
+  const bodyweight = catalog[exercise.exerciseId]?.bodyweight ?? false
+  const { reason } = suggestionFor({ sessions, settings, catalog }, exercise, session.id)
 
   return (
     <div className="set-editor">
@@ -85,12 +90,17 @@ const SetRow = ({
             dispatch({ type: 'updateSet', exId: exercise.id, setId: set.id, patch: { warmup: !set.warmup } })
           }
         >
-          {set.warmup ? 'Warm-up set' : `Set ${displayOrdinal}`}{set.warmup ? '' : ' · tap for warm-up'}
+          {set.warmup ? 'Warm-up' : `Set ${displayOrdinal}`}
         </button>
+        {!set.warmup && (
+          <InfoPopover content={reason} label="Why this weight">
+            <span className="pill">Why</span>
+          </InfoPopover>
+        )}
         <span className="spacer" />
         {set.done && (
           <button
-            className="btn sm ghost"
+            className="btn-plain"
             onClick={() => dispatch({ type: 'uncompleteSet', exId: exercise.id, setId: set.id })}
           >
             Undo ✓
@@ -133,7 +143,7 @@ const SetRow = ({
 
       {!set.done && (
         <button
-          className="btn primary block complete"
+          className="btn-filled block complete"
           onClick={() => {
             if (act.completeSet(exercise.id, set.id)) onDone()
           }}
@@ -193,7 +203,7 @@ const ExerciseCard = ({
       <div className="ex-head">
         <span className="ex-name">{exercise.name}</span>
         <span className="pill num">{target}</span>
-        <button className="btn sm ghost" aria-label={`Options for ${exercise.name}`} onClick={() => setMenu(true)}>
+        <button className="btn-plain" aria-label={`Options for ${exercise.name}`} onClick={() => setMenu(true)}>
           ⋯
         </button>
       </div>
@@ -201,20 +211,18 @@ const ExerciseCard = ({
       <div className="last-line">
         {last ? (
           <>
-            Last{daysAgoLabel !== null && ` (${daysAgoLabel}d ago)`}:{' '}
             <b className="num">
               {workingSets(last.exercise)
                 .map((s) => (s.weight !== null ? `${fmtWeight(s.weight)}×${s.reps}` : `${s.reps}`))
-                .join(', ')}
+                .join('  ')}
             </b>
-            {workingSets(last.exercise).some((s) => s.weight !== null) && (
-              <span className="faint"> {unit}</span>
-            )}
+            {workingSets(last.exercise).some((s) => s.weight !== null) && ` ${unit}`}
+            {daysAgoLabel !== null && `, ${daysAgoLabel}d ago`}
           </>
         ) : (
-          <span className="faint">First time — set your baseline</span>
+          <span className="label-3">No history yet</span>
         )}
-        {exercise.notes && <div className="tiny muted" style={{ marginTop: 4 }}>{exercise.notes}</div>}
+        {exercise.notes && <div className="t-caption label-2" style={{ marginTop: 3 }}>{exercise.notes}</div>}
       </div>
 
       {exercise.sets.map((set, i) =>
@@ -242,9 +250,9 @@ const ExerciseCard = ({
       )}
 
       <div className="row" style={{ marginTop: 8 }}>
-        <button className="btn sm" onClick={() => act.addSet(exercise.id)}>+ Set</button>
+        <button className="btn-plain" onClick={() => act.addSet(exercise.id)}>+ Set</button>
         {exercise.sets.length > 1 && (
-          <button className="btn sm ghost" onClick={removeLastSet}>− Set</button>
+          <button className="btn-plain" onClick={removeLastSet}>− Set</button>
         )}
         <span className="spacer" />
         <span className="tiny faint num">
@@ -255,19 +263,19 @@ const ExerciseCard = ({
       {menu && (
         <Sheet title={exercise.name} onClose={() => setMenu(false)}>
           <div className="stack">
-            <button className="btn block" disabled={index === 0}
+            <button className="btn-gray block" disabled={index === 0}
               onClick={() => { dispatch({ type: 'moveSessionExercise', exId: exercise.id, delta: -1 }); setMenu(false) }}>
               Move up
             </button>
-            <button className="btn block" disabled={index === count - 1}
+            <button className="btn-gray block" disabled={index === count - 1}
               onClick={() => { dispatch({ type: 'moveSessionExercise', exId: exercise.id, delta: 1 }); setMenu(false) }}>
               Move down
             </button>
-            <button className="btn block"
+            <button className="btn-gray block"
               onClick={() => { act.startRest(exercise.restSec, exercise.name); setMenu(false) }}>
               Start rest timer ({fmtClock(exercise.restSec)})
             </button>
-            <button className="btn block danger"
+            <button className="btn-tinted destructive block"
               onClick={() => { dispatch({ type: 'removeSessionExercise', exId: exercise.id }); setMenu(false) }}>
               <IconTrash /> Remove from this workout
             </button>
@@ -278,15 +286,15 @@ const ExerciseCard = ({
       {confirmDeleteSet && (
         <Sheet title="Delete a completed set?" onClose={() => setConfirmDeleteSet(null)}>
           <div className="stack">
-            <p className="small muted">This set is already logged. Deleting it can't be undone.</p>
-            <button className="btn danger block"
+            <p className="t-footnote label-2">This set is logged. Deleting it cannot be undone</p>
+            <button className="btn-tinted destructive block"
               onClick={() => {
                 dispatch({ type: 'deleteSet', exId: exercise.id, setId: confirmDeleteSet })
                 setConfirmDeleteSet(null)
               }}>
               Delete set
             </button>
-            <button className="btn ghost block" onClick={() => setConfirmDeleteSet(null)}>Keep it</button>
+            <button className="btn-gray block" onClick={() => setConfirmDeleteSet(null)}>Keep it</button>
           </div>
         </Sheet>
       )}
@@ -300,7 +308,7 @@ const ExerciseCard = ({
 const LiveDuration = ({ startedAt, sets }: { startedAt: number; sets: number }) => {
   const now = useNow(1000)
   return (
-    <span className="sub num">
+    <span className="num">
       {fmtClock((now - startedAt) / 1000)} · {sets} {sets === 1 ? 'set' : 'sets'} done
     </span>
   )
@@ -332,21 +340,20 @@ const AddExerciseSheet = ({ onClose }: { onClose: () => void }) => {
     <Sheet title="Add exercise" onClose={onClose}>
       <div className="stack">
         <input
-          autoFocus value={name} placeholder="Search or type a new exercise"
+          autoFocus value={name} placeholder="Search or add"
           onChange={(e) => setName(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter') add(name) }}
         />
         {matches.map((m) => (
-          <button key={m} className="list-item" onClick={() => add(m)}>
+          <button key={m} className="row-item" onClick={() => add(m)}>
             <span style={{ flex: 1 }}>{m}</span>
-            <span className="chev">＋</span>
+            <span className="chevron">＋</span>
           </button>
         ))}
-        <p className="tiny faint">
-          Added for this workout only — the day's template doesn't change.
-          Picking an existing name keeps its history and records connected.
+        <p className="t-caption label-3">
+          This workout only, since the day's template stays as it is
         </p>
-        <button className="btn primary block" onClick={() => add(name)} disabled={!name.trim()}>
+        <button className="btn-filled block" onClick={() => add(name)} disabled={!name.trim()}>
           Add{name.trim() ? ` "${name.trim()}"` : ''}
         </button>
       </div>
@@ -358,6 +365,7 @@ export const SessionScreen = () => {
   const session = useAppSelector(selectActive)
   const [adding, setAdding] = useState(false)
   const [finishing, setFinishing] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [activeSetId, setActiveSetId] = useState<string | null>(() => {
     // Open on the first incomplete set of the first unfinished exercise.
     const s = selectActive(getStore().getState())
@@ -368,24 +376,25 @@ export const SessionScreen = () => {
   const done = sessionDoneSetCount(session)
 
   return (
-    <>
-      <header className="topbar">
-        <button className="btn sm ghost" aria-label="Back to Today" onClick={() => switchTab('/')}>
-          <IconBack />
-        </button>
-        <h1>
-          {session.dayName}
-          <LiveDuration startedAt={session.startedAt} sets={done} />
-        </h1>
-        <button className="btn sm primary" onClick={() => setFinishing(true)}>Finish</button>
-      </header>
-
-      <main className="main">
+    <Screen
+      id="session"
+      title={session.dayName}
+      subtitle={<LiveDuration startedAt={session.startedAt} sets={done} />}
+      centerTitle
+      leading={<button className="btn-plain danger" onClick={() => setCancelling(true)}>Cancel</button>}
+      trailing={<button className="btn-plain strong" onClick={() => setFinishing(true)}>Finish</button>}
+    >
         {session.dayNotes && (
-          <div className="card tight">
-            <div className="tiny faint" style={{ fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>Warm-up</div>
-            <div className="small" style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{session.dayNotes}</div>
-          </div>
+          <>
+            <div className="section-header tight">Before you start</div>
+            <div className="group">
+              <div className="row-item" style={{ display: 'block' }}>
+                <div className="t-subhead label-2" style={{ whiteSpace: 'pre-wrap' }}>
+                  {session.dayNotes}
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {session.exercises.map((e, i) => (
@@ -400,43 +409,54 @@ export const SessionScreen = () => {
           />
         ))}
 
-        <button className="btn block" onClick={() => setAdding(true)}>+ Add exercise</button>
+        <button className="btn-gray block" onClick={() => setAdding(true)}>+ Add exercise</button>
 
-        <div className="section-title">Workout notes</div>
+        <div className="section-header">Workout notes</div>
         <textarea
           rows={3}
           defaultValue={session.notes}
-          placeholder="How it felt, tweaks for next time…"
+          placeholder="Notes"
           onBlur={(e) => dispatch({ type: 'setSessionNotes', notes: e.target.value })}
         />
-      </main>
-
       {adding && <AddExerciseSheet onClose={() => setAdding(false)} />}
+
+      {cancelling && (
+        <Sheet title="Cancel this workout?" onClose={() => setCancelling(false)}>
+          <div className="stack">
+            <p className="t-footnote label-2">
+              {done > 0
+                ? `Throws away ${done} logged ${done === 1 ? 'set' : 'sets'}`
+                : 'Nothing is logged yet'}
+            </p>
+            <button className="btn-tinted destructive block"
+              onClick={() => { dispatch({ type: 'discardActiveSession' }); switchTab('/') }}>
+              Cancel workout
+            </button>
+            <button className="btn-gray block" onClick={() => setCancelling(false)}>
+              Keep going
+            </button>
+          </div>
+        </Sheet>
+      )}
 
       {finishing && (
         <Sheet title="Finish workout?" onClose={() => setFinishing(false)}>
           <div className="stack">
-            <p className="small muted">
+            <p className="t-footnote label-2">
               {done > 0
-                ? `${done} ${done === 1 ? 'set' : 'sets'} will be saved. Rows you didn't complete are dropped.`
-                : "You haven't completed any sets yet — there's nothing to save."}
+                ? `Saves ${done} ${done === 1 ? 'set' : 'sets'} and drops the empty rows`
+                : 'No sets logged yet'}
             </p>
             <button
-              className="btn primary block" disabled={done === 0}
+              className="btn-filled block" disabled={done === 0}
               onClick={() => { act.finishSession(); switchTab('/') }}
             >
               Save workout
             </button>
-            <button
-              className="btn block danger"
-              onClick={() => { dispatch({ type: 'discardActiveSession' }); switchTab('/') }}
-            >
-              Discard workout
-            </button>
-            <button className="btn ghost block" onClick={() => setFinishing(false)}>Keep going</button>
+            <button className="btn-gray block" onClick={() => setFinishing(false)}>Keep going</button>
           </div>
         </Sheet>
       )}
-    </>
+    </Screen>
   )
 }

@@ -1,7 +1,7 @@
 export type ID = string
 export type Unit = 'kg' | 'lb'
 
-export const SCHEMA_VERSION = 2
+export const SCHEMA_VERSION = 3
 
 /**
  * Catalog entry — the stable identity of a movement. Templates and logged
@@ -9,12 +9,24 @@ export const SCHEMA_VERSION = 2
  * fork an exercise's history. Preset exercises use slug ids
  * ('barbell-bench-press'); user-created ones get uids.
  */
+export type Equipment = 'barbell' | 'dumbbell' | 'machine' | 'cable' | 'bodyweight'
+
 export interface Exercise {
   id: ID
   name: string
   /** Reps-based PRs and volume; no weight expected. */
   bodyweight: boolean
+  equipment: Equipment
+  /** Smallest loadable jump for this movement, in the user's unit. */
+  increment: number
   archived: boolean
+}
+
+/** One warm-up prescription: a share of the working weight for some reps. */
+export interface WarmupStep {
+  /** Fraction of the planned working weight, 0 to 1. */
+  pct: number
+  reps: number
 }
 
 /** An exercise as programmed in a day template. */
@@ -24,8 +36,11 @@ export interface ExerciseTemplate {
   sets: number
   repLow: number
   repHigh: number
+  /** Ceiling the range may extend to before a load jump is forced. */
+  repCap: number
   /** Rest between sets, seconds. */
   restSec: number
+  warmups: WarmupStep[]
   notes: string
 }
 
@@ -66,7 +81,9 @@ export interface SessionExercise {
   name: string
   repLow: number
   repHigh: number
+  repCap: number
   restSec: number
+  warmupPlan: WarmupStep[]
   notes: string
   sets: LoggedSet[]
 }
@@ -109,6 +126,8 @@ export interface Settings {
   weightStep: number
   /** Audible detent ticks on the tape input. */
   tickSound: boolean
+  /** Your bodyweight, used to size jumps on bodyweight movements. */
+  bodyweight: number
 }
 
 export interface AppState {

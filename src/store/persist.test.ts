@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppStore } from './store'
+import { SCHEMA_VERSION } from '../types'
 import {
   attachPersistence, isStorageHealthy, KEYS, loadInitialState, persistAll,
 } from './persist'
@@ -21,7 +22,7 @@ afterEach(() => {
 describe('loadInitialState', () => {
   it('boots fresh with nothing stored', () => {
     const state = loadInitialState()
-    expect(state.version).toBe(2)
+    expect(state.version).toBe(SCHEMA_VERSION)
     expect(state.sessions).toEqual([])
   })
 
@@ -39,7 +40,7 @@ describe('loadInitialState', () => {
   it('survives corrupted slices by falling back per-slice or fresh', () => {
     localStorage.setItem(KEYS.core, '{"version":2,"progr') // truncated write
     const state = loadInitialState()
-    expect(state.version).toBe(2)
+    expect(state.version).toBe(SCHEMA_VERSION)
     expect(state.programs.length).toBeGreaterThan(0)
   })
 

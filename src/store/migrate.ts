@@ -1,7 +1,7 @@
-import type { AppState } from '../types'
+import type { AppState, Unit } from '../types'
 import { decodeAppState } from './decode'
 import { resolveExercise } from '../lib/catalog'
-import { pplProgram, presetCatalog } from '../lib/presets'
+import { pplProgram, presetCatalog, presetTemplateMeta, setPresetUnit } from '../lib/presets'
 import { uid } from '../lib/util'
 
 export const V1_KEY = 'gym-app:state:v1'
@@ -87,8 +87,65 @@ export const migrateV1 = (raw: unknown): AppState => {
   )
 }
 
-/** Decodes a raw v2 payload (already keyed by slice or whole). */
+/** Decodes a raw current-version payload (already keyed by slice or whole). */
 export const decodeV2 = (raw: unknown): AppState =>
   decodeAppState(raw, presetFallback)
 
-export const freshState = (): AppState => decodeAppState({}, presetFallback)
+/** Warm-up prose the v2 presets emitted; migration strips exactly these. */
+const V2_WARMUP_PROSE = [
+  /Ramp up in warm-up sets, then take one heavy top set of 3-5 reps\.\s*/,
+  /Ramp first: [^.]*\.\s*/,
+  /Three warm-up sets first: [^.]*\.\s*/,
+  /Pyramid warm-up: [^.]*\.\s*/,
+  /Sets 1-4 are feeders[^.]*\.\s*/,
+  /Tap a set number to mark the feeders as warm-ups\.\s*/,
+]
+
+/**
+ * v2 -> v3: same shape plus equipment, increment, warmups, repCap. The
+ * decoders supply defaults; known preset exercises get their real schemes
+ * from the preset meta table, and v2 warm-up prose leaves the notes.
+ * Idempotent: warmups are only filled where empty.
+ */
+export const migrateV2 = (raw: unknown): AppState => {
+  const state = decodeAppState(raw, presetFallback)
+  const unit: Unit = state.settings.unit
+  const meta = presetTemplateMeta(unit)
+
+  const catalog = { ...state.catalog }
+  for (const [slug, m] of Object.entries(meta)) {
+    const existing = catalog[slug]
+    if (existing) {
+      catalog[slug] = { ...existing, equipment: m.equipment, increment: m.increment }
+    }
+  }
+
+  const stripProse = (notes: string): string => {
+    let out = notes
+    for (const re of V2_WARMUP_PROSE) out = out.replace(re, '')
+    return out.trim()
+  }
+
+  const programs = state.programs.map((p) => ({
+    ...p,
+    days: p.days.map((d) => ({
+      ...d,
+      exercises: d.exercises.map((t) => {
+        const m = meta[t.exerciseId]
+        return {
+          ...t,
+          warmups: t.warmups.length > 0 ? t.warmups : (m?.warmups ?? []),
+          repCap: Math.max(t.repCap, t.repHigh + (m?.extend ?? 0)),
+          notes: stripProse(t.notes),
+        }
+      }),
+    })),
+  }))
+
+  return { ...state, catalog, programs }
+}
+
+export const freshState = (): AppState => {
+  setPresetUnit('lb')
+  return decodeAppState({}, presetFallback)
+}

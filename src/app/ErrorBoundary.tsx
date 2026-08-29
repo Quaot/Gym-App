@@ -11,7 +11,7 @@ interface State {
 
 /**
  * Last line of defence: if a render throws (poisoned storage that slipped
- * past the decoder, a bug), the user gets their data out and a way back in —
+ * past the decoder, a bug), the user gets their data out and a way back in 
  * never a permanent white screen.
  */
 export class ErrorBoundary extends Component<Props, State> {
@@ -52,10 +52,9 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error === null) return this.props.children
     return (
       <div style={{ padding: '48px 24px', maxWidth: 480, margin: '0 auto' }}>
-        <h1 style={{ fontSize: 22 }}>Something broke</h1>
+        <h1 style={{ fontSize: 22 }}>Something went wrong</h1>
         <p style={{ color: 'var(--muted, #93a1b2)' }}>
-          The app hit an error it couldn't recover from. Your data may still be
-          intact — download it first, then reset.
+          Download your data, then reset
         </p>
         <pre
           style={{
@@ -69,10 +68,10 @@ export class ErrorBoundary extends Component<Props, State> {
           {String(this.state.error)}
         </pre>
         <div style={{ display: 'grid', gap: 10, marginTop: 20 }}>
-          <button className="btn" onClick={this.exportRaw}>
+          <button className="btn-gray" onClick={this.exportRaw}>
             Download backup
           </button>
-          <button className="btn danger" onClick={this.reset}>
+          <button className="btn-tinted destructive" onClick={this.reset}>
             Reset app
           </button>
         </div>

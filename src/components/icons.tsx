@@ -24,6 +24,12 @@ export const IconCog = () => (
 export const IconCheck = () => (
   <svg viewBox="0 0 24 24" width="20" height="20" {...stroke}><path d="m5 13 4.5 4.5L19 7" /></svg>
 )
+export const IconChevron = () => (
+  <svg viewBox="0 0 8 13" className="chevron" fill="none" aria-hidden>
+    <path d="M1.5 1.5 6.5 6.5 1.5 11.5" stroke="currentColor" strokeWidth="2"
+      strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+)
 export const IconBack = () => (
   <svg viewBox="0 0 24 24" width="22" height="22" {...stroke}><path d="M15 5l-7 7 7 7" /></svg>
 )
