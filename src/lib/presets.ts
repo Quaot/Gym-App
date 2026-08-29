@@ -1,5 +1,10 @@
-import type { DayTemplate, ExerciseTemplate, Program } from '../types'
+import type { DayTemplate, Exercise, ExerciseTemplate, Program } from '../types'
 import { uid } from './util'
+import { makeExercise, slugify } from './catalog'
+
+/** Every exercise mentioned by any preset, keyed by slug. Built as a side
+ *  effect of declaring the days below, so it can never drift from them. */
+const catalog: Record<string, Exercise> = {}
 
 const ex = (
   name: string,
@@ -8,7 +13,11 @@ const ex = (
   repHigh: number,
   restSec: number,
   notes = '',
-): ExerciseTemplate => ({ id: uid(), name, sets, repLow, repHigh, restSec, notes })
+): ExerciseTemplate => {
+  const slug = slugify(name)
+  catalog[slug] ??= makeExercise(name, slug)
+  return { id: uid(), exerciseId: slug, sets, repLow, repHigh, restSec, notes }
+}
 
 const day = (name: string, notes: string, exercises: ExerciseTemplate[]): DayTemplate => ({
   id: uid(),
@@ -16,6 +25,14 @@ const day = (name: string, notes: string, exercises: ExerciseTemplate[]): DayTem
   notes,
   exercises,
 })
+
+/** Catalog entries for every preset exercise. */
+export const presetCatalog = (): Record<string, Exercise> => {
+  // Populate via ex(); idempotent thanks to ??= above.
+  pplProgram()
+  pplulProgram()
+  return Object.fromEntries(Object.entries(catalog).map(([k, v]) => [k, { ...v }]))
+}
 
 /*
  * ---------------------------------------------------------------------------
@@ -76,6 +93,7 @@ const LEG_WARMUP =
 export const pplProgram = (): Program => ({
   id: uid(),
   name: 'Push / Pull / Legs',
+  presetKey: 'ppl6',
   days: [
     day('Push 1', UPPER_WARMUP, [
       ex('Barbell Bench Press', 1, 3, 5, 210,
@@ -164,6 +182,92 @@ export const pplProgram = (): Program => ({
     ]),
 
     day('Legs 2', LEG_WARMUP, [
+      ex('Deadlift', 1, 5, 5, 240,
+        'Ramp first: 30% × 8; 50% × 4; 75% × 2; 90% × 1. Then take one working set of 5 reps.'),
+      ex('Stiff-Leg Deadlift', 2, 8, 8, 180,
+        '50-60% of your Deadlift working weight.'),
+      ex('Leg Press', 4, 10, 12, 150),
+      ex('Glute-Ham Raise', 3, 8, 10, 120),
+      ex('Slow-Eccentric Leg Extension', 3, 8, 10, 90,
+        'Lower slowly on every rep.'),
+      ex('Seated Calf Raise', 4, 15, 20, 90),
+      ex('Roman Chair Leg Raise', 3, 10, 20, 60),
+    ]),
+  ],
+})
+
+/**
+ * The five-day split: the three "day 1" variants above, then an Upper day
+ * recombining the Push 2 / Pull 2 compounds and a Lower day drawn from
+ * Legs 2. Same house style; same catalog slugs, so an exercise's history
+ * follows it between splits.
+ */
+export const pplulProgram = (): Program => ({
+  id: uid(),
+  name: 'PPL + Upper / Lower',
+  presetKey: 'pplul5',
+  days: [
+    day('Push', UPPER_WARMUP, [
+      ex('Barbell Bench Press', 1, 3, 5, 210,
+        'Ramp up in warm-up sets, then take one heavy top set of 3-5 reps.'),
+      ex('Barbell Larsen Press', 2, 10, 10, 180,
+        'Legs straight out on the floor. No leg drive.'),
+      ex('Standing Arnold Press', 3, 8, 10, 150),
+      ex('Cross-Body Cable Y-Raise', 3, 12, 15, 90),
+      ex('Squeeze-Only Triceps Pressdown', 3, 8, 8, 30,
+        'Contracted half of the range only. Superset with Stretch-Only Overhead Triceps ' +
+        'Extension. Go straight into it without resting.'),
+      ex('Stretch-Only Overhead Triceps Extension', 3, 8, 8, 90,
+        'Stretched half of the range only. Closes the Squeeze-Only Triceps Pressdown superset. ' +
+        'Rest after this one.'),
+    ]),
+
+    day('Pull', UPPER_WARMUP, [
+      ex('Lat Pulldown', 5, 10, 10, 150,
+        'Sets 1-4 are feeders, one step apart: set 1 at RPE 4-5; set 2 at RPE 6-7; ' +
+        'set 3 at RPE 7-8; set 4 at RPE 10. Set 5 goes to failure, then drop the weight 30% ' +
+        'and go again. Tap a set number to mark the feeders as warm-ups.'),
+      ex('Omni-Grip Chest-Supported Row', 3, 10, 12, 120,
+        'Use a different grip on each set.'),
+      ex('Omni-Directional Cable Face Pull', 3, 12, 15, 90,
+        'Change the cable height each set: set 1 low to high; set 2 straight on; ' +
+        'set 3 high to low.'),
+      ex('EZ-Bar Biceps Curl', 3, 6, 8, 120),
+      ex('Bottom-Half Dumbbell Preacher Curl', 2, 10, 12, 90,
+        'Stretched half of the range only.'),
+    ]),
+
+    day('Legs', LEG_WARMUP, [
+      ex('Squat', 4, 2, 4, 210,
+        'Ramp first: 20% × 10; 35% × 5; 55% × 3; 70% × 2; 80% × 1. ' +
+        'Working sets are 2-4 reps at 85-90% of your 1RM.'),
+      ex('Romanian Deadlift', 3, 8, 10, 150),
+      ex('Walking Lunge', 2, 10, 10, 120,
+        '10 reps per leg. Keep the depth on the last steps — do not cut them short.'),
+      ex('Seated Leg Curl', 3, 10, 12, 90,
+        'Change foot position each set: set 1 toes out; set 2 toes in; set 3 neutral.'),
+      ex('Leg Press Toe Press', 4, 10, 12, 90,
+        'Change foot position each set: set 1 neutral; set 2 toes out; set 3 toes in; ' +
+        'set 4 neutral.'),
+      ex('Decline Plate Crunch', 3, 10, 12, 60),
+    ]),
+
+    day('Upper', UPPER_WARMUP, [
+      ex('Incline Barbell Bench Press', 3, 5, 15, 180,
+        'Three warm-up sets first: 10 reps; 4 reps; 3 reps. Then set 1 moderate for 8; ' +
+        'set 2 heavy for 5; set 3 light for 15.'),
+      ex('Kroc Row', 3, 10, 12, 120,
+        '10-12 reps per arm.'),
+      ex('Machine Shoulder Press', 3, 10, 12, 120),
+      ex('Half-Kneeling Single-Arm Lat Pulldown', 3, 12, 15, 120,
+        '12-15 reps per arm.'),
+      ex('Reverse Pec Deck', 3, 10, 12, 90),
+      ex('Overhead Cable Biceps Curl', 3, 10, 12, 90),
+      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120,
+        'Rest the bar on the floor between reps.'),
+    ]),
+
+    day('Lower', LEG_WARMUP, [
       ex('Deadlift', 1, 5, 5, 240,
         'Ramp first: 30% × 8; 50% × 4; 75% × 2; 90% × 1. Then take one working set of 5 reps.'),
       ex('Stiff-Leg Deadlift', 2, 8, 8, 180,

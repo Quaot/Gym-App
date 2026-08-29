@@ -1,16 +1,30 @@
 import { describe, expect, it } from 'vitest'
-import { pplProgram } from './presets'
+import { pplProgram, pplulProgram, presetCatalog } from './presets'
+import { isBodyweightSlug, slugify } from './catalog'
 
+const catalog = presetCatalog()
+const named = (p: ReturnType<typeof pplProgram>) =>
+  p.days.map((d) => ({
+    ...d,
+    exercises: d.exercises.map((e) => ({ ...e, name: catalog[e.exerciseId].name })),
+  }))
 const program = pplProgram()
-const days = program.days
+const pplul = pplulProgram()
+// Style rules run over BOTH presets.
+const days = [...named(program), ...named(pplul)]
 const allExercises = days.flatMap((d) => d.exercises.map((e) => ({ day: d.name, ...e })))
 
 /** Words that legitimately end in "s" — everything else must be singular. */
 const S_ALLOWED = new Set(['Press', 'Biceps', 'Triceps', 'Cross'])
 
 describe('program shape', () => {
-  it('runs the six days in rotation order', () => {
-    expect(days.map((d) => d.name)).toEqual(['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2'])
+  it('runs the six PPL days in rotation order', () => {
+    expect(program.days.map((d) => d.name)).toEqual(['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2'])
+  })
+
+  it('runs the five PPLUL days in Push→Pull→Legs→Upper→Lower order', () => {
+    expect(pplul.days.map((d) => d.name)).toEqual(['Push', 'Pull', 'Legs', 'Upper', 'Lower'])
+    expect(pplul.presetKey).toBe('pplul5')
   })
 
   it('gives every day a warm-up with the same two labels', () => {
@@ -140,3 +154,42 @@ describe('note style', () => {
     }
   })
 })
+
+describe('catalog integrity', () => {
+  it('every template exerciseId in both presets resolves in presetCatalog', () => {
+    for (const p of [program, pplul]) {
+      for (const d of p.days) {
+        for (const t of d.exercises) {
+          expect(catalog[t.exerciseId], `${p.name} / ${d.name}`).toBeDefined()
+        }
+      }
+    }
+  })
+
+  it('catalog ids are the slugs of their names', () => {
+    for (const e of Object.values(catalog)) {
+      expect(e.id).toBe(slugify(e.name))
+    }
+  })
+
+  it('bodyweight flags are set on the bodyweight family', () => {
+    expect(catalog[slugify('Pull-Up')].bodyweight).toBe(true)
+    expect(catalog[slugify('Diamond Push-Up')].bodyweight).toBe(true)
+    expect(catalog[slugify('Roman Chair Leg Raise')].bodyweight).toBe(true)
+    expect(catalog[slugify('Barbell Bench Press')].bodyweight).toBe(false)
+    for (const e of Object.values(catalog)) {
+      expect(e.bodyweight, e.name).toBe(isBodyweightSlug(e.id))
+    }
+  })
+
+  it('shared movements use the same slug across both splits (history continuity)', () => {
+    const pplIds = new Set(program.days.flatMap((d) => d.exercises.map((t) => t.exerciseId)))
+    const pplulIds = pplul.days.flatMap((d) => d.exercises.map((t) => t.exerciseId))
+    const shared = pplulIds.filter((id) => pplIds.has(id))
+    // The 5-day split is built from the 6-day movements: nearly all overlap.
+    expect(shared.length).toBeGreaterThanOrEqual(20)
+    expect(pplIds.has(slugify('Squat'))).toBe(true)
+    expect(pplulIds).toContain(slugify('Squat'))
+  })
+})
+
