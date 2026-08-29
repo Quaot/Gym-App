@@ -112,3 +112,23 @@ describe('reconcileWarmups', () => {
     expect(out.filter((s) => !s.warmup).map((s) => s.id)).toEqual(['a', 'b', 'c'])
   })
 })
+
+describe('a warm-up you changed by hand', () => {
+  const plan = [{ pct: 0.5, reps: 6 }, { pct: 0.7, reps: 4 }]
+  const makeId = () => 'x'
+
+  it('is what the reconciler would overwrite, so the screen has to notice', () => {
+    // The rule the session screen enforces: once a pending row stops matching
+    // what was generated, the ramp belongs to the user and stops following.
+    const built = reconcileWarmups(
+      [{ id: 'w', weight: null, reps: null, done: false, warmup: false, completedAt: null }],
+      plan, 200, 5, makeId,
+    )
+    const edited = built.map((s) => (s.warmup && s.weight === 100 ? { ...s, weight: 115 } : s))
+    const wouldRevert = reconcileWarmups(edited, plan, 200, 5, makeId)
+    expect(wouldRevert.find((s) => s.warmup)!.weight).toBe(100)
+    // Which is exactly why the screen compares against what it generated
+    // before it dispatches.
+    expect(edited.find((s) => s.warmup)!.weight).toBe(115)
+  })
+})

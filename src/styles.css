@@ -897,6 +897,22 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 }
 .set-editor .complete { margin-top: 14px; }
 
+/* What to hang on the bar: the one sum you should never have to do tired. */
+.plates {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  font-size: 13px;
+  letter-spacing: 0;
+  margin: 2px 0 -4px;
+}
+.plates .plate-list {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--accent);
+}
+
 /* ---------------------------------------------------------------- *
  *  Tape input
  * ---------------------------------------------------------------- */
@@ -1135,6 +1151,16 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .switch:checked { background: var(--accent); }
 .switch:checked::after { transform: translateX(20px); }
 
+/* Charts draw themselves in, once, so a screen arrives rather than appears. */
+@keyframes chartIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.chart-card svg { animation: chartIn 420ms var(--spring) both; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-card svg { animation-duration: 1ms; }
+}
+
 /* ---------------------------------------------------------------- *
  *  Info popover, the show-do-not-tell affordance
  * ---------------------------------------------------------------- */
@@ -1225,6 +1251,32 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   white-space: nowrap;
 }
 .pill.accent { background: var(--accent-soft); color: var(--accent); }
+.summary { margin-bottom: 4px; }
+.summary .stat-row { margin-bottom: 10px; }
+.records { display: grid; gap: 6px; }
+.record-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 214, 10, 0.1);
+}
+.record-line .grow { flex: 1; min-width: 0; }
+
+.pill.record {
+  background: rgba(255, 214, 10, 0.2);
+  color: var(--yellow);
+  font-weight: 700;
+  animation: recordIn 500ms var(--spring);
+}
+@keyframes recordIn {
+  from { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.12); }
+  to { transform: scale(1); opacity: 1; }
+}
 .pill.warm { background: rgba(255, 159, 10, 0.18); color: var(--orange); }
 
 .warmup-editor { padding-top: 4px; }
