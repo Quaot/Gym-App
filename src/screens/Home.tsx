@@ -1,29 +1,37 @@
 import { navigate } from '../lib/router'
-import { useStore } from '../store'
+import { useAppSelector } from '../store/store'
+import { act } from '../store/actions'
+import { dispatch } from '../store/store'
 import { fmtDate, fmtDuration } from '../lib/util'
-import { sessionSetCount } from '../lib/history'
+import { finishedSessions, sessionSetCount } from '../lib/history'
 import type { DayTemplate, Session } from '../types'
-
-const lastSessionFor = (sessions: Session[], dayId: string) =>
-  sessions.find((s) => s.dayId === dayId && s.finishedAt !== null) ?? null
+import { useState } from 'react'
+import { Sheet } from '../components/Sheet'
 
 /** Next day in the rotation after whatever was trained last. */
-const suggestedDay = (days: DayTemplate[], sessions: Session[]): DayTemplate | null => {
+const suggestedDay = (days: DayTemplate[], finished: Session[]): DayTemplate | null => {
   if (days.length === 0) return null
-  const last = sessions.find((s) => s.finishedAt !== null)
+  const last = finished[0]
   if (!last) return days[0]
   const i = days.findIndex((d) => d.id === last.dayId)
   return i < 0 ? days[0] : days[(i + 1) % days.length]
 }
 
 export const Home = () => {
-  const { state, dispatch, activeSession } = useStore()
-  const { days } = state.program
-  const finished = state.sessions.filter((s) => s.finishedAt !== null)
-  const suggestion = suggestedDay(days, finished)
+  const program = useAppSelector((s) => s.programs.find((p) => p.id === s.activeProgramId) ?? s.programs[0])
+  const sessions = useAppSelector((s) => s.sessions)
+  const activeSessionId = useAppSelector((s) => s.activeSessionId)
+  const [orphanSheet, setOrphanSheet] = useState<string | null>(null)
+
+  const days = program.days
+  const finished = finishedSessions(sessions)
+  const active = sessions.find((s) => s.id === activeSessionId) ?? null
+  // Unfinished but not active: crash leftovers or pre-v2 orphans.
+  const orphans = sessions.filter((s) => s.finishedAt === null && s.id !== activeSessionId)
+  const suggestion = active ? null : suggestedDay(days, finished)
 
   const start = (dayId: string) => {
-    dispatch({ type: 'startSession', dayId })
+    act.startSession(dayId)
     navigate('/session')
   }
 
@@ -31,23 +39,38 @@ export const Home = () => {
     <>
       <header className="topbar">
         <h1>
-          {state.program.name}
-          <span className="sub">{new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}</span>
+          {program.name}
+          <span className="sub">
+            {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+          </span>
         </h1>
       </header>
 
       <main className="main">
-        {activeSession && (
-          <button className="card day-card" style={{ borderColor: 'var(--accent)' }} onClick={() => navigate('/session')}>
-            <div style={{ flex: 1 }}>
-              <div className="name">{activeSession.dayName} in progress</div>
+        {active && (
+          <button className="card day-card glow" onClick={() => navigate('/session')}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="name">{active.dayName} in progress</div>
               <div className="small muted">
-                Started {fmtDate(activeSession.startedAt)} · {sessionSetCount(activeSession)} sets logged
+                Started {fmtDate(active.startedAt)} · {sessionSetCount(active)} sets logged
               </div>
             </div>
             <span className="pill accent">Resume</span>
           </button>
         )}
+
+        {orphans.map((s) => (
+          <button key={s.id} className="card day-card" style={{ borderColor: 'var(--warm)' }}
+            onClick={() => setOrphanSheet(s.id)}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="name">Unfinished: {s.dayName}</div>
+              <div className="small muted">
+                {fmtDate(s.startedAt)} · {sessionSetCount(s)} sets logged, never finished
+              </div>
+            </div>
+            <span className="pill warm">Recover</span>
+          </button>
+        ))}
 
         <div className="section-title">Start a workout</div>
 
@@ -61,11 +84,11 @@ export const Home = () => {
         )}
 
         {days.map((day) => {
-          const last = lastSessionFor(finished, day.id)
-          const isNext = !activeSession && suggestion?.id === day.id
+          const last = finished.find((s) => s.dayId === day.id) ?? null
+          const isNext = suggestion?.id === day.id
           const empty = day.exercises.length === 0
           return (
-            <div key={day.id} className="card day-card" style={isNext ? { borderColor: 'var(--accent)' } : undefined}>
+            <div key={day.id} className={`card day-card${isNext ? ' glow' : ''}`}>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="row" style={{ gap: 8 }}>
                   <span className="name">{day.name}</span>
@@ -78,8 +101,12 @@ export const Home = () => {
               </div>
               {empty ? (
                 <button className="btn sm ghost" onClick={() => navigate(`/program/${day.id}`)}>Set up</button>
+              ) : active ? (
+                <span className="pill">In session</span>
               ) : (
-                <button className={`btn sm${isNext ? ' primary' : ''}`} onClick={() => start(day.id)}>Start</button>
+                <button className={`btn sm${isNext ? ' primary' : ''}`} onClick={() => start(day.id)}>
+                  Start
+                </button>
               )}
             </div>
           )
@@ -90,8 +117,8 @@ export const Home = () => {
             <div className="section-title">Recent</div>
             {finished.slice(0, 3).map((s) => (
               <button key={s.id} className="list-item" onClick={() => navigate(`/history/${s.id}`)}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600 }}>{s.dayName}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 650 }}>{s.dayName}</div>
                   <div className="small muted">
                     {fmtDate(s.finishedAt ?? s.startedAt)} · {sessionSetCount(s)} sets ·{' '}
                     {fmtDuration((s.finishedAt ?? s.startedAt) - s.startedAt)}
@@ -103,6 +130,29 @@ export const Home = () => {
           </>
         )}
       </main>
+
+      {orphanSheet && (
+        <Sheet title="Unfinished workout" onClose={() => setOrphanSheet(null)}>
+          <div className="stack">
+            <p className="small muted">
+              This workout was never finished — probably interrupted. Resume it to keep logging,
+              or discard it.
+            </p>
+            <button className="btn primary block" disabled={active !== null}
+              onClick={() => {
+                dispatch({ type: 'resumeSession', sessionId: orphanSheet })
+                setOrphanSheet(null)
+                navigate('/session')
+              }}>
+              {active ? 'Finish the current workout first' : 'Resume it'}
+            </button>
+            <button className="btn danger block"
+              onClick={() => { dispatch({ type: 'deleteSession', sessionId: orphanSheet }); setOrphanSheet(null) }}>
+              Discard it
+            </button>
+          </div>
+        </Sheet>
+      )}
     </>
   )
 }

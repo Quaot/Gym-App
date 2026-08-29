@@ -1,123 +1,106 @@
 # Gym App
 
-A phone-first push/pull/legs tracker: log your sets and reps in the gym with one
-thumb, see what you lifted last time, and beat it.
+A phone-first workout tracker: log sets with one thumb on custom tape sliders,
+see exactly what you lifted last time, watch a month or a year of progress, and
+find out whether sleep actually moves your numbers.
 
-It is an installable web app (PWA). Everything runs on your device and works
-with no signal — nothing is uploaded, there are no accounts, and there is
-nothing to pay for.
+Installable web app (PWA). Everything runs on your device and works with no
+signal — nothing is uploaded, no accounts, nothing to pay for.
 
-## What it does
+## Logging a workout
 
-- **Log sets fast.** Big +/- steppers for weight and reps, one tap to tick a set
-  off. An untouched set carries the previous set's numbers, so a straight-sets
-  exercise is three taps.
-- **Shows last time, inline.** Every exercise displays what you did in your last
-  session (`Last (3d ago): 60kg×8, 60kg×8, 60kg×7`) so progressive overload
-  needs no mental arithmetic.
-- **Rest timer.** Starts automatically when you tick a set, counts overtime, and
-  chimes/vibrates when rest is up. Per-exercise rest times.
-- **Six-day PPL built in.** Push 1 → Pull 1 → Legs 1 → Push 2 → Pull 2 → Legs 2,
-  pre-loaded with every exercise, set, rep range and cue. The home screen marks
-  whichever day comes next in the rotation. Everything is editable.
-- **Paste a workout in.** Rather than typing a routine in field by field, paste
-  the list (see below).
-- **History and progress.** Per-workout summaries with volume and duration, plus
-  per-exercise history and your best set with an estimated 1RM.
-- **Warm-up sets.** Tap a set number to mark it a warm-up; it is excluded from
-  personal bests and from what carries forward.
-- **Backups.** Export/import your whole history as a JSON file.
+- **Tape inputs, not spinners.** Weight and reps are set on a ruler that scrolls
+  under a needle: drag to adjust with a haptic tick per step, flick for big
+  jumps (momentum + snap), tap the big numeral to type instead. The value the
+  ghost shows is exactly what completing the set records.
+- **One active set at a time.** Completed and pending sets collapse to single
+  lines; tap any line to reopen it. Completing a set auto-advances to the next.
+- **Last time, inline.** `Last (3d ago): 100×5, 102.5×5, 105×4` on every
+  exercise. Untouched sets prefill from your previous set, or last session's
+  matching working set — warm-ups only ever inherit from warm-ups.
+- **Rest timer, everywhere.** Starts when you complete a set, floats above the
+  tab bar on every screen, survives navigation *and* reloads (the deadline is
+  wall-clock and persisted), chimes and vibrates when done, counts overtime.
+- **Everything is timed.** Total duration ticks live in the header; every set is
+  timestamped, so the app shows the *actual* rest you took before each set and
+  splits each workout into lifting vs resting time.
 
-## The built-in program
+## The splits
 
-The app ships with the six-day rotation already entered:
+Two built-in programs, both editable, switchable under **Program → Splits**:
 
-| Day | Opener |
-| --- | --- |
-| Push 1 | Barbell Bench Press 1×3-5 |
-| Pull 1 | Lat Pulldown, 4 feeder sets + failure set with a 30% drop |
-| Legs 1 | Squat, ramped to 85-90% |
-| Push 2 | Incline Barbell Bench Press 3×8/5/15 |
-| Pull 2 | Half-Kneeling Single-Arm Lat Pulldown 3×12-15 |
-| Legs 2 | Deadlift 1×5 |
+- **Push / Pull / Legs** — the 6-day rotation (Push 1/2, Pull 1/2, Legs 1/2).
+- **PPL + Upper / Lower** — 5 days: Push → Pull → Legs → Upper → Lower.
 
-Each day carries its warm-up protocol, shown at the top of the session screen.
+Exercises live in one catalog shared by both splits, so a lift keeps a single
+history and PR record no matter which split (or free-typed session) it was
+logged in. The home screen tracks your rotation and marks what's up next.
 
-The wording follows one house style, documented at the top of
-`src/lib/presets.ts` and enforced by `src/lib/presets.test.ts` — exercise names
-are Title Case, singular, and ordered modifier → equipment → movement; notes are
-full sentences that read what to do → load → cue; per-set instructions are always
-`Set 1 …; set 2 …`; loads are always a percentage of your 1RM or working weight.
-The tests fail if a new line drifts from it, so edits stay consistent.
+Day editing supports pasting a whole list (`Bench Press 3x6-8 (rest 3 min)` —
+one exercise per line; sets/reps, rests, and notes are parsed and round-trip
+losslessly).
 
-Some of the programming doesn't map onto plain sets and reps, so it lives in the
-exercise note you see while logging:
+## Progress
 
-- **Supersets** (press-around + pec stretch, pressdown + overhead extension,
-  pullover + stretch) are consecutive exercises, with the pairing in the note
-  and a short rest on the first of the pair.
-- **Timed holds** (pec stretch, lat stretch) are logged with the seconds in the
-  reps field — `2 × 30` means two 30-second holds.
-- **Feeder sets and percentage ramps** (lat pulldown RPE ladder, the squat and
-  deadlift pyramids) are described in the note. Tap a set's number while logging
-  to mark it a warm-up so it stays out of your personal bests.
-- **AMRAP** sets (pull-ups, diamond push-ups) are entered as a wide rep range.
+- **Per-exercise trend** — estimated 1RM (Epley) for loaded lifts, best-set reps
+  for bodyweight movements, with PR markers, tap-to-scrub, and M / 6M / Y / All
+  ranges.
+- **Weekly volume** bars and a **calendar heatmap** with per-month workout,
+  gym-time and volume totals.
+- **Sleep × performance** — each workout is scored against your trailing
+  average *for that same day type*, then plotted against the previous night's
+  sleep: scatter, fitted trend, Pearson r, and a plain-language readout
+  ("after 8h+ of sleep you lift +7.2% vs typical").
 
-**Settings → Reload the built-in program** restores all of this if you edit your
-way into a corner. It replaces your days only — logged workouts are kept.
+## Sleep
 
-## Editing it, or setting up your own
+- **Quick log**: a 5-second slider on the Progress tab (0–14h, 15-minute steps).
+- **Apple Health import** (Settings → Sleep): Health app → profile picture →
+  *Export All Health Data* → open the zip in the app. It's parsed on-device in
+  a background worker (streaming — a multi-hundred-MB export never loads into
+  memory), overlapping iPhone/Watch records are merged rather than
+  double-counted, and manual entries win over imported ones for the same night.
 
-Days, exercises, sets, rep ranges, rest times and notes are all editable under
-**Program**, and you can add or delete days entirely.
+## Your data
 
-To enter a routine in bulk, open **Program → Edit** on a day, then **Paste
-list**, and paste one exercise per line:
-
-```
-1. Barbell Bench Press — 3x6-8 (rest 3 min)
-2. Incline Dumbbell Press 3 x 8-10
-Cable Fly 2x12-15 (slow eccentric)
-Overhead Press
-```
-
-- Sets and reps come from anything shaped like `3x6-8`, `3 × 8`, or `2 sets x 12`.
-- A trailing `(...)` becomes a note on the exercise.
-- A rest time — `(rest 3 min)`, `(90s)` — sets that exercise's rest timer.
-  A duration that isn't labelled "rest" and sits among other words (`30 sec
-  hold`) is kept as a note instead.
-- A line with no numbers falls back to 3×8-12 and the default rest.
-
-Leading numbering and bullets are ignored, so you can paste a list straight out
-of a video description or your notes. The sheet previews what it recognised
-before you commit, and everything stays editable field by field afterwards.
-
-## Using it on your phone
-
-Open the deployed URL in your phone's browser and add it to your home screen
-(iOS Safari: Share → Add to Home Screen; Android Chrome: menu → Install app).
-It then launches full-screen and works offline.
-
-Your data lives in that browser's storage on that one device. Clearing site data
-erases it, so take an occasional backup from **Settings → Export backup**.
+- Stored on-device in localStorage, written per-slice with debouncing and
+  flushed the moment the app is backgrounded.
+- **Export/import backup** (JSON) in Settings; exports are Safari-proof.
+- Malformed or hand-edited data is repaired, not rejected: bad entries are
+  dropped individually and the rest survive. If rendering ever crashes anyway,
+  an error screen still offers *Download backup* and *Reset* — no white screen
+  of death.
+- v1 data (the previous release) migrates automatically on first launch.
 
 ## Development
 
 ```bash
 npm install
 npm run dev        # local dev server
-npm test           # parser unit tests
+npm test           # unit suite (150 tests: migration, reducer invariants,
+                   #   prefill, timing, analytics, sleep merge, correlation,
+                   #   parser round-trips, preset style rules)
 npm run build      # production build into dist/
-npm run preview    # serve the production build
+npm run preview    # serve the production build on :4173
+node scripts/e2e.mjs   # 48-assertion Playwright suite against the preview:
+                   #   v1 migration, poisoned storage, the full workout loop,
+                   #   tape gestures, rest-timer persistence, paste round-trip,
+                   #   split switching, charts, the real Health-zip import,
+                   #   hardware-back behavior, and 320px layout
 ```
+
+Architecture notes: a framework-free store (`useSyncExternalStore` + pure
+reducer; all ids/timestamps injected by action creators), per-slice persistence,
+decoder-validated state with v1→v2 migration, hand-rolled SVG charts, and a
+Web Worker + fflate for the Health import. The only runtime dependencies are
+React and fflate.
 
 ## Deploying
 
 Pushing to `main` builds and publishes to GitHub Pages via
-`.github/workflows/deploy.yml`. Enable it once under **Settings → Pages →
-Source: GitHub Actions**; the app then lives at
-`https://<owner>.github.io/Gym-App/`.
+`.github/workflows/deploy.yml` (unit tests gate the deploy). Enable it once
+under **Settings → Pages → Source: GitHub Actions**; the app then lives at
+`https://<owner>.github.io/Gym-App/`. Add it to your home screen from there.
 
-The build's base path comes from `APP_BASE` (defaults to `/Gym-App/`). Serving
-from a different path or a custom domain means setting that variable, e.g.
-`APP_BASE=/ npm run build`.
+The base path comes from `APP_BASE` (defaults to `/Gym-App/`);
+`APP_BASE=/ npm run build` for a custom domain.

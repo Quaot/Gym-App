@@ -1,17 +1,21 @@
-import type { LoggedSet, Session, SessionExercise } from '../types'
+import type { AppState, ID, LoggedSet, Session, SessionExercise } from '../types'
 
-export const normalizeName = (name: string) => name.trim().toLowerCase()
-
-export const workingSets = (e: SessionExercise) =>
+export const workingSets = (e: SessionExercise): LoggedSet[] =>
   e.sets.filter((s) => s.done && !s.warmup && s.reps !== null)
 
-/** Epley estimate, used only to rank sets against each other. */
-export const est1RM = (s: LoggedSet) =>
-  s.weight === null || s.reps === null ? 0 : s.weight * (1 + s.reps / 30)
+export const warmupSets = (e: SessionExercise): LoggedSet[] =>
+  e.sets.filter((s) => s.done && s.warmup && s.reps !== null)
 
-export const bestSet = (e: SessionExercise): LoggedSet | null =>
+/** Epley estimate, used to rank sets. Bodyweight movements rank by reps. */
+export const est1RM = (s: LoggedSet, bodyweight: boolean): number => {
+  if (s.reps === null) return 0
+  if (bodyweight || s.weight === null) return s.reps
+  return s.weight * (1 + s.reps / 30)
+}
+
+export const bestSet = (e: SessionExercise, bodyweight: boolean): LoggedSet | null =>
   workingSets(e).reduce<LoggedSet | null>(
-    (best, s) => (best === null || est1RM(s) > est1RM(best) ? s : best),
+    (best, s) => (best === null || est1RM(s, bodyweight) > est1RM(best, bodyweight) ? s : best),
     null,
   )
 
@@ -20,56 +24,65 @@ export interface HistoryEntry {
   exercise: SessionExercise
 }
 
-/** Every past appearance of an exercise, newest first. */
+/** Finished sessions, most recently finished first. */
+export const finishedSessions = (sessions: Session[]): Session[] =>
+  sessions
+    .filter((s) => s.finishedAt !== null)
+    .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
+
+/** Every past appearance of an exercise (by identity), newest first. */
 export const exerciseHistory = (
   sessions: Session[],
-  name: string,
-  excludeSessionId?: string | null,
-): HistoryEntry[] => {
-  const key = normalizeName(name)
-  if (!key) return []
-  return sessions
-    .filter((s) => s.finishedAt !== null && s.id !== excludeSessionId)
-    .sort((a, b) => (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
+  exerciseId: ID,
+  excludeSessionId?: ID | null,
+): HistoryEntry[] =>
+  finishedSessions(sessions)
+    .filter((s) => s.id !== excludeSessionId)
     .flatMap((session) =>
       session.exercises
-        .filter((e) => normalizeName(e.name) === key && workingSets(e).length > 0)
+        .filter((e) => e.exerciseId === exerciseId && e.sets.some((x) => x.done))
         .map((exercise) => ({ session, exercise })),
     )
-}
 
 export const lastPerformance = (
   sessions: Session[],
-  name: string,
-  excludeSessionId?: string | null,
-): HistoryEntry | null => exerciseHistory(sessions, name, excludeSessionId)[0] ?? null
+  exerciseId: ID,
+  excludeSessionId?: ID | null,
+): HistoryEntry | null => exerciseHistory(sessions, exerciseId, excludeSessionId)[0] ?? null
 
-/** Heaviest estimated-1RM set ever recorded for an exercise. */
+/** Heaviest-ranked set ever recorded for an exercise. */
 export const personalBest = (
-  sessions: Session[],
-  name: string,
-  excludeSessionId?: string | null,
-): LoggedSet | null =>
-  exerciseHistory(sessions, name, excludeSessionId).reduce<LoggedSet | null>((best, h) => {
-    const b = bestSet(h.exercise)
-    return b && (best === null || est1RM(b) > est1RM(best)) ? b : best
-  }, null)
+  state: AppState,
+  exerciseId: ID,
+  excludeSessionId?: ID | null,
+): LoggedSet | null => {
+  const bodyweight = state.catalog[exerciseId]?.bodyweight ?? false
+  return exerciseHistory(state.sessions, exerciseId, excludeSessionId).reduce<LoggedSet | null>(
+    (best, h) => {
+      const b = bestSet(h.exercise, bodyweight)
+      return b && (best === null || est1RM(b, bodyweight) > est1RM(best, bodyweight)) ? b : best
+    },
+    null,
+  )
+}
 
-export const sessionVolume = (s: Session) =>
+/** Total load moved. Bodyweight sets contribute reps × weight only if a weight
+ *  was logged (weighted pull-ups); pure-bodyweight volume is tracked as reps. */
+export const sessionVolume = (s: Session): number =>
   s.exercises.reduce(
     (total, e) =>
       total + workingSets(e).reduce((v, set) => v + (set.weight ?? 0) * (set.reps ?? 0), 0),
     0,
   )
 
-export const sessionSetCount = (s: Session) =>
+export const sessionReps = (s: Session): number =>
+  s.exercises.reduce(
+    (total, e) => total + workingSets(e).reduce((v, set) => v + (set.reps ?? 0), 0),
+    0,
+  )
+
+export const sessionSetCount = (s: Session): number =>
   s.exercises.reduce((n, e) => n + workingSets(e).length, 0)
 
-/** All exercise names seen in the program or history, for autocomplete. */
-export const knownExerciseNames = (sessions: Session[], extra: string[] = []): string[] => {
-  const seen = new Map<string, string>()
-  for (const name of extra) if (name.trim()) seen.set(normalizeName(name), name.trim())
-  for (const s of sessions)
-    for (const e of s.exercises) if (e.name.trim()) seen.set(normalizeName(e.name), e.name.trim())
-  return [...seen.values()].sort((a, b) => a.localeCompare(b))
-}
+export const sessionDoneSetCount = (s: Session): number =>
+  s.exercises.reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0)

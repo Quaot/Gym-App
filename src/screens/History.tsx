@@ -1,22 +1,18 @@
-import { useMemo, useState } from 'react'
-import { useStore } from '../store'
-import { navigate } from '../lib/router'
+import { useState } from 'react'
+import { useAppSelector, dispatch } from '../store/store'
+import { navigate, back } from '../lib/router'
 import { Sheet } from '../components/Sheet'
 import { IconBack } from '../components/icons'
-import { fmtDate, fmtDuration, fmtSet, fmtWeight } from '../lib/util'
+import { fmtClock, fmtDate, fmtDuration, fmtSet } from '../lib/util'
 import {
-  bestSet, est1RM, exerciseHistory, knownExerciseNames, sessionSetCount,
-  sessionVolume, workingSets,
+  finishedSessions, sessionSetCount, sessionVolume, workingSets, warmupSets,
 } from '../lib/history'
+import { restBefore, sessionTimeSplit } from '../lib/timing'
 
 export const HistoryList = () => {
-  const { state } = useStore()
-  const [exercise, setExercise] = useState<string | null>(null)
-  const finished = state.sessions.filter((s) => s.finishedAt !== null)
-  const names = useMemo(
-    () => knownExerciseNames(state.sessions, state.program.days.flatMap((d) => d.exercises.map((e) => e.name))),
-    [state.sessions, state.program.days],
-  )
+  const sessions = useAppSelector((s) => s.sessions)
+  const unit = useAppSelector((s) => s.settings.unit)
+  const finished = finishedSessions(sessions)
 
   return (
     <>
@@ -28,84 +24,31 @@ export const HistoryList = () => {
       </header>
 
       <main className="main">
-        {names.length > 0 && (
-          <>
-            <div className="section-title">Look up an exercise</div>
-            <select
-              aria-label="Exercise progress"
-              value=""
-              onChange={(e) => e.target.value && setExercise(e.target.value)}
-            >
-              <option value="">Choose an exercise…</option>
-              {names.map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </>
+        {finished.length === 0 && (
+          <div className="empty">No finished workouts yet — go lift something.</div>
         )}
-
-        <div className="section-title">Workouts</div>
-        {finished.length === 0 && <div className="empty">No finished workouts yet.</div>}
         {finished.map((s) => (
           <button key={s.id} className="list-item" onClick={() => navigate(`/history/${s.id}`)}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600 }}>{s.dayName}</div>
-              <div className="small muted">
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 650 }}>{s.dayName}</div>
+              <div className="small muted num">
                 {fmtDate(s.finishedAt ?? s.startedAt)} · {sessionSetCount(s)} sets ·{' '}
                 {fmtDuration((s.finishedAt ?? s.startedAt) - s.startedAt)} ·{' '}
-                {Math.round(sessionVolume(s)).toLocaleString()} {state.settings.unit} volume
+                {Math.round(sessionVolume(s)).toLocaleString()} {unit}
               </div>
             </div>
             <span className="chev">›</span>
           </button>
         ))}
       </main>
-
-      {exercise && <ExerciseProgress name={exercise} onClose={() => setExercise(null)} />}
     </>
   )
 }
 
-const ExerciseProgress = ({ name, onClose }: { name: string; onClose: () => void }) => {
-  const { state } = useStore()
-  const { unit } = state.settings
-  const history = exerciseHistory(state.sessions, name)
-  const best = history.reduce<{ w: number; label: string } | null>((acc, h) => {
-    const b = bestSet(h.exercise)
-    if (!b) return acc
-    const w = est1RM(b)
-    return acc && acc.w >= w ? acc : { w, label: fmtSet(b.weight, b.reps, unit) }
-  }, null)
-
-  return (
-    <Sheet title={name} onClose={onClose}>
-      {best && (
-        <div className="card tight">
-          <div className="tiny muted">Best set</div>
-          <div style={{ fontSize: 19, fontWeight: 700 }}>{best.label}</div>
-          <div className="tiny muted">≈ {fmtWeight(Math.round(best.w * 10) / 10)} {unit} estimated 1RM</div>
-        </div>
-      )}
-      {history.length === 0 && <p className="muted small">Nothing logged for this exercise yet.</p>}
-      {history.map((h) => (
-        <div key={h.exercise.id} className="card tight">
-          <div className="row">
-            <span className="small" style={{ fontWeight: 600 }}>{fmtDate(h.session.finishedAt ?? h.session.startedAt)}</span>
-            <span className="spacer" />
-            <span className="tiny muted">{h.session.dayName}</span>
-          </div>
-          <div className="small mono" style={{ marginTop: 4 }}>
-            {workingSets(h.exercise).map((s) => `${fmtWeight(s.weight)}${unit}×${s.reps}`).join('  ·  ')}
-          </div>
-        </div>
-      ))}
-    </Sheet>
-  )
-}
-
 export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
-  const { state, dispatch } = useStore()
+  const session = useAppSelector((s) => s.sessions.find((x) => x.id === sessionId) ?? null)
+  const unit = useAppSelector((s) => s.settings.unit)
   const [confirm, setConfirm] = useState(false)
-  const session = state.sessions.find((s) => s.id === sessionId)
-  const { unit } = state.settings
 
   if (!session) {
     return (
@@ -115,10 +58,12 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
     )
   }
 
+  const split = sessionTimeSplit(session)
+
   return (
     <>
       <header className="topbar">
-        <button className="btn sm ghost" aria-label="Back" onClick={() => navigate('/history')}><IconBack /></button>
+        <button className="btn sm ghost" aria-label="Back" onClick={back}><IconBack /></button>
         <h1>
           {session.dayName}
           <span className="sub">{fmtDate(session.finishedAt ?? session.startedAt)}</span>
@@ -126,37 +71,71 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
       </header>
 
       <main className="main">
-        <div className="card tight row wrap" style={{ gap: 14 }}>
-          <div>
-            <div className="tiny muted">Sets</div>
-            <div style={{ fontWeight: 700 }}>{sessionSetCount(session)}</div>
+        <div className="stat-grid" style={{ marginBottom: 12 }}>
+          <div className="stat">
+            <div className="label">Duration</div>
+            <div className="value num">{fmtDuration(split.totalMs)}</div>
           </div>
-          <div>
-            <div className="tiny muted">Volume</div>
-            <div style={{ fontWeight: 700 }}>{Math.round(sessionVolume(session)).toLocaleString()} {unit}</div>
+          <div className="stat">
+            <div className="label">Volume</div>
+            <div className="value num">
+              {Math.round(sessionVolume(session)).toLocaleString()}
+              <span className="unit">{unit}</span>
+            </div>
           </div>
-          <div>
-            <div className="tiny muted">Duration</div>
-            <div style={{ fontWeight: 700 }}>{fmtDuration((session.finishedAt ?? session.startedAt) - session.startedAt)}</div>
+          <div className="stat">
+            <div className="label">Sets</div>
+            <div className="value num">{sessionSetCount(session)}</div>
+          </div>
+          <div className="stat">
+            <div className="label">Lifting</div>
+            <div className="value num">{fmtDuration(split.workMs)}</div>
+          </div>
+          <div className="stat">
+            <div className="label">Resting</div>
+            <div className="value num">{fmtDuration(split.restMs)}</div>
+          </div>
+          <div className="stat">
+            <div className="label">Avg rest</div>
+            <div className="value num">
+              {split.avgRestMs !== null ? fmtClock(split.avgRestMs / 1000) : '—'}
+            </div>
           </div>
         </div>
 
-        {session.exercises.map((e) => (
-          <div key={e.id} className="card">
-            <div className="ex-head"><span className="ex-name">{e.name}</span></div>
-            {workingSets(e).map((s, i) => (
-              <div key={s.id} className="row small mono" style={{ padding: '3px 0' }}>
-                <span className="muted" style={{ width: 22 }}>{i + 1}</span>
-                <span>{fmtSet(s.weight, s.reps, unit)}</span>
-              </div>
-            ))}
-          </div>
-        ))}
+        {session.exercises.map((e) => {
+          const warm = warmupSets(e)
+          const work = workingSets(e)
+          return (
+            <div key={e.id} className="card tight">
+              <div className="ex-head"><span className="ex-name" style={{ fontSize: 16 }}>{e.name}</span></div>
+              {warm.map((s) => (
+                <div key={s.id} className="row small num" style={{ padding: '3px 0', color: 'var(--warm)' }}>
+                  <span style={{ width: 24 }}>W</span>
+                  <span>{fmtSet(s.weight, s.reps, unit)}</span>
+                </div>
+              ))}
+              {work.map((s, i) => {
+                const rested = restBefore(session, s.id)
+                return (
+                  <div key={s.id} className="row small num" style={{ padding: '3px 0' }}>
+                    <span className="muted" style={{ width: 24 }}>{i + 1}</span>
+                    <span>{fmtSet(s.weight, s.reps, unit)}</span>
+                    <span className="spacer" />
+                    {rested !== null && (
+                      <span className="tiny faint">rested {fmtClock(rested / 1000)}</span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
 
         {session.notes && (
-          <div className="card">
-            <div className="tiny muted">Notes</div>
-            <div className="small" style={{ whiteSpace: 'pre-wrap' }}>{session.notes}</div>
+          <div className="card tight">
+            <div className="tiny faint" style={{ fontWeight: 700 }}>NOTES</div>
+            <div className="small" style={{ whiteSpace: 'pre-wrap', marginTop: 4 }}>{session.notes}</div>
           </div>
         )}
 
@@ -168,7 +147,9 @@ export const SessionDetail = ({ sessionId }: { sessionId: string }) => {
           <div className="stack">
             <p className="small muted">This can't be undone.</p>
             <button className="btn danger block"
-              onClick={() => { dispatch({ type: 'deleteSession', sessionId }); navigate('/history') }}>Delete</button>
+              onClick={() => { dispatch({ type: 'deleteSession', sessionId }); navigate('/history') }}>
+              Delete
+            </button>
             <button className="btn ghost block" onClick={() => setConfirm(false)}>Cancel</button>
           </div>
         </Sheet>

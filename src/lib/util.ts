@@ -31,10 +31,11 @@ export const fmtClock = (sec: number) => {
 export const fmtDate = (ts: number) => {
   const d = new Date(ts)
   const today = new Date()
-  const sameDay = d.toDateString() === today.toDateString()
-  const yday = new Date(today.getTime() - 86400000).toDateString() === d.toDateString()
-  if (sameDay) return 'Today'
-  if (yday) return 'Yesterday'
+  if (d.toDateString() === today.toDateString()) return 'Today'
+  // Calendar-based yesterday: setDate handles month/year/DST boundaries.
+  const yday = new Date(today)
+  yday.setDate(today.getDate() - 1)
+  if (d.toDateString() === yday.toDateString()) return 'Yesterday'
   return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
