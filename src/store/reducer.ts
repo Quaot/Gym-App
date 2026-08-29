@@ -39,6 +39,7 @@ export type Action =
   | { type: 'removeSessionExercise'; exId: ID }
   | { type: 'moveSessionExercise'; exId: ID; delta: number }
   | { type: 'addSet'; exId: ID; set: LoggedSet }
+  | { type: 'setSets'; exId: ID; sets: LoggedSet[] }
   | { type: 'updateSet'; exId: ID; setId: ID; patch: Partial<Pick<LoggedSet, 'weight' | 'reps' | 'warmup'>> }
   | { type: 'completeSet'; exId: ID; setId: ID; weight: number | null; reps: number; now: number }
   | { type: 'uncompleteSet'; exId: ID; setId: ID }
@@ -245,6 +246,15 @@ export const reducer = (state: AppState, action: Action): AppState => {
         ...e,
         sets: [...e.sets, action.set],
       }))
+
+    case 'setSets':
+      // Whole-list replacement, used by the warm-up ramp as it follows the
+      // working weight. Anything already logged has to survive it.
+      return withSessionExercise(state, action.exId, (e) => {
+        const kept = e.sets.filter((s) => s.done)
+        const survives = kept.every((s) => action.sets.some((x) => x.id === s.id && x.done))
+        return survives ? { ...e, sets: action.sets } : e
+      })
 
     case 'updateSet':
       // Invariant: a logged set is history. Only uncompleting it reopens it,

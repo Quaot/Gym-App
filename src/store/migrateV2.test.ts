@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { SCHEMA_VERSION } from '../types'
 import { migrateV2, decodeV2 } from './migrate'
 
 // A realistic v2 state captured before the v3 schema change: kg settings,
@@ -10,8 +11,10 @@ const v2 = JSON.parse(readFileSync(`${__dirname}/../../test-fixtures/v2-state.js
 describe('migrateV2 on the captured fixture', () => {
   const state = migrateV2(v2)
 
-  it('produces version 3 and keeps every session and sleep entry', () => {
-    expect(state.version).toBe(3)
+  it('produces the current version and keeps every session and sleep entry', () => {
+    // The decoder stamps whatever the schema is now, so this tracks the
+    // constant rather than a literal that has to be chased on every bump.
+    expect(state.version).toBe(SCHEMA_VERSION)
     expect(state.sessions).toHaveLength(v2.sessions.length)
     expect(state.sleep).toHaveLength(v2.sleep.length)
   })
@@ -69,10 +72,10 @@ describe('migrateV2 on the captured fixture', () => {
 })
 
 describe('migrateV2 on hostile input', () => {
-  it('handles garbage by falling back to a fresh v3 state', () => {
+  it('handles garbage by falling back to a fresh current state', () => {
     for (const raw of [null, 42, 'x', [], {}]) {
       const state = migrateV2(raw)
-      expect(state.version).toBe(3)
+      expect(state.version).toBe(SCHEMA_VERSION)
       expect(state.programs.length).toBeGreaterThan(0)
     }
   })

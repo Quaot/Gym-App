@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { SCHEMA_VERSION } from '../types'
-import { migrateV1, decodeV2, freshState } from './migrate'
+import { migrateV1, migrateV3, decodeV2, freshState } from './migrate'
 import { slugify } from '../lib/catalog'
 
 // A real v1 state captured from the running v1 app: 5 sessions of which 2 are
@@ -130,11 +130,115 @@ describe('migrateV1 on hostile input', () => {
 describe('freshState', () => {
   it('boots with the ppl6 preset and a fully-resolvable catalog', () => {
     const state = freshState()
-    expect(state.programs[0].days).toHaveLength(6)
+    expect(state.programs[0].days).toHaveLength(10)
     for (const d of state.programs[0].days) {
       for (const t of d.exercises) {
         expect(state.catalog[t.exerciseId]).toBeDefined()
       }
+    }
+  })
+})
+
+describe('migrateV3: the six day rotation becomes ten', () => {
+  /** A stored v3 core, shaped exactly as the six day preset shipped it. */
+  const storedV3 = () => {
+    const fresh = freshState()
+    const preset = fresh.programs[0]
+    const six = preset.days.filter((d) =>
+      ['Push 1', 'Pull 1', 'Legs 1', 'Push 2', 'Pull 2', 'Legs 2'].includes(d.name),
+    )
+    return {
+      ...fresh,
+      programs: [{ ...preset, days: six }],
+    }
+  }
+
+  it('adds the four days in position and leaves the rotation in order', () => {
+    const out = migrateV3(storedV3())
+    expect(out.programs[0].days.map((d) => d.name)).toEqual([
+      'Push 1', 'Pull 1', 'Legs 1', 'Upper 1', 'Lower 1',
+      'Push 2', 'Pull 2', 'Legs 2', 'Upper 2', 'Lower 2',
+    ])
+  })
+
+  it('keeps every original day, by id', () => {
+    const before = storedV3()
+    const ids = before.programs[0].days.map((d) => d.id)
+    const after = migrateV3(before)
+    for (const id of ids) {
+      expect(after.programs[0].days.some((d) => d.id === id), id).toBe(true)
+    }
+  })
+
+  it('changes nothing on a second run', () => {
+    const once = migrateV3(storedV3())
+    expect(migrateV3(once).programs[0].days.map((d) => d.name))
+      .toEqual(once.programs[0].days.map((d) => d.name))
+  })
+
+  it('leaves a renamed day alone: those days are yours, not the preset\'s', () => {
+    const state = storedV3()
+    state.programs[0].days[2] = { ...state.programs[0].days[2], name: 'Leg Day' }
+    expect(migrateV3(state).programs[0].days).toHaveLength(6)
+  })
+
+  it('leaves a program alone once an exercise has been removed', () => {
+    const state = storedV3()
+    const day = state.programs[0].days[0]
+    state.programs[0].days[0] = { ...day, exercises: day.exercises.slice(1) }
+    expect(migrateV3(state).programs[0].days).toHaveLength(6)
+  })
+
+  it('leaves the five day split and a custom program alone', () => {
+    const state = storedV3()
+    state.programs[0] = { ...state.programs[0], presetKey: 'pplul5' }
+    expect(migrateV3(state).programs[0].days).toHaveLength(6)
+    const custom = storedV3()
+    custom.programs[0] = { ...custom.programs[0], presetKey: null }
+    expect(migrateV3(custom).programs[0].days).toHaveLength(6)
+  })
+
+  it('leaves rep and rest edits in place, since those are ordinary use', () => {
+    const state = storedV3()
+    const day = state.programs[0].days[0]
+    state.programs[0].days[0] = {
+      ...day,
+      exercises: [{ ...day.exercises[0], repHigh: 12, restSec: 60 }, ...day.exercises.slice(1)],
+    }
+    const out = migrateV3(state)
+    expect(out.programs[0].days).toHaveLength(10)
+    expect(out.programs[0].days[0].exercises[0].repHigh).toBe(12)
+  })
+
+  it('carries sessions, sleep and settings through untouched', () => {
+    const state = storedV3()
+    const withData = {
+      ...state,
+      settings: { ...state.settings, unit: 'kg' as const, bodyweight: 82 },
+      sleep: [{ id: 's1', night: '2026-01-02', asleepMin: 400, inBedMin: 430, source: 'manual' as const }],
+    }
+    const out = migrateV3(withData)
+    expect(out.settings.unit).toBe('kg')
+    expect(out.settings.bodyweight).toBe(82)
+    expect(out.sleep).toHaveLength(1)
+  })
+
+  it('back-fills any movement the stored catalog is missing', () => {
+    const state = storedV3()
+    // A user who never trained a Kroc Row may not carry it in their catalog.
+    const thinned = { ...state.catalog }
+    delete thinned['kroc-row']
+    const out = migrateV3({ ...state, catalog: thinned })
+    for (const d of out.programs[0].days) {
+      for (const t of d.exercises) expect(out.catalog[t.exerciseId], t.exerciseId).toBeDefined()
+    }
+  })
+
+  it('survives hostile input', () => {
+    for (const raw of [null, 42, [], {}, 'nope']) {
+      const out = migrateV3(raw)
+      expect(out.version).toBe(SCHEMA_VERSION)
+      expect(out.programs.length).toBeGreaterThan(0)
     }
   })
 })
