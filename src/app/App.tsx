@@ -36,6 +36,20 @@ const TabBar = ({ active }: { active: string }) => (
   </nav>
 )
 
+/**
+ * Which colour the shared chrome wears. The screens set their own through
+ * `data-screen`; this covers the tab bar, the rest bar and every sheet, which
+ * are portalled or live outside the screen tree.
+ */
+const SECTION: Record<string, string> = {
+  '': 'today',
+  session: 'workout',
+  program: 'program',
+  progress: 'progress',
+  history: 'history',
+  settings: 'settings',
+}
+
 /** Tab roots sit at the root. Everything you drill into sits one level in. */
 const depthOf = (segments: string[]): number =>
   segments[0] === 'session' ? 1 : segments.length > 1 ? 1 : 0
@@ -89,6 +103,10 @@ export const App = () => {
   const path = pathOf(segments)
   const depth = depthOf(segments)
   const modal = isModal(segments)
+
+  useEffect(() => {
+    document.body.dataset.section = SECTION[segments[0] ?? ''] ?? 'today'
+  }, [segments])
 
   const stage = useRef<HTMLDivElement | null>(null)
   const [anim, setAnim] = useState<{ from: string[]; dir: 'push' | 'pop'; key: number } | null>(null)
@@ -232,7 +250,7 @@ export const App = () => {
       : 'screen under'
 
   return (
-    <div className={`app${modal ? ' modal' : ''}`}>
+    <div className="app">
       <div
         className="stage"
         ref={stage}
