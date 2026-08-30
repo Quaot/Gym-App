@@ -59,6 +59,10 @@ export const Sheet = ({ title, onClose, children }: Props) => {
     // Only from the grab area, only with the content at the top, and only one
     // finger, so a drag never fights with scrolling or with a second touch.
     if (el.scrollTop > 0 || drag.current.active) return
+    // Never from a control. Capturing the pointer retargets the click that
+    // follows onto the capturing element, which used to eat every press of
+    // the close button in the header.
+    if ((e.target as HTMLElement).closest('button')) return
     const d = drag.current
     d.active = true
     d.pointerId = e.pointerId

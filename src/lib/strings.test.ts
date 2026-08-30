@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { pplProgram, pplulProgram, presetCatalog } from './presets'
+import { explainedExercises, howToFor } from './howTo'
 import { suggestProgression } from './progression'
 
 const SRC = join(__dirname, '..')
@@ -101,6 +102,50 @@ describe('house copy rules', () => {
         for (const t of day.exercises) {
           expect(t.notes.trim().endsWith('.'), catalog[t.exerciseId].name).toBe(false)
         }
+      }
+    }
+  })
+})
+
+describe('the instructions people rely on', () => {
+  it('explains every movement the presets prescribe', () => {
+    const catalog = presetCatalog('lb')
+    const explained = new Set(explainedExercises())
+    for (const program of [pplProgram(), pplulProgram()]) {
+      for (const day of program.days) {
+        for (const t of day.exercises) {
+          expect(explained.has(t.exerciseId), `${catalog[t.exerciseId].name}`).toBe(true)
+        }
+      }
+    }
+  })
+
+  it('says all four things about each one, at a readable length', () => {
+    for (const id of explainedExercises()) {
+      const how = howToFor(id)!
+      for (const [field, text] of Object.entries(how)) {
+        expect(text.length, `${id}.${field}`).toBeGreaterThan(30)
+        expect(text.length, `${id}.${field}`).toBeLessThan(320)
+        // House style: no dashes, and nothing closes with a period.
+        expect(text, `${id}.${field}`).not.toMatch(/[—–]/)
+        expect(text, `${id}.${field}`).not.toMatch(/ - /)
+        expect(text.trim().endsWith('.'), `${id}.${field}`).toBe(false)
+        expect(text, `${id}.${field}`).toMatch(/^[A-Z]/)
+      }
+    }
+  })
+
+  it('writes the mistake as the mistake, not as a preamble', () => {
+    for (const id of explainedExercises()) {
+      expect(howToFor(id)!.mistake, id).not.toMatch(/^The most common/)
+    }
+  })
+
+  it('spells time in sec and min, as the rest of the app does', () => {
+    for (const id of explainedExercises()) {
+      const how = howToFor(id)!
+      for (const text of Object.values(how)) {
+        expect(text, id).not.toMatch(/\b\d+\s*(seconds?|minutes?)\b/)
       }
     }
   })

@@ -16,7 +16,13 @@ export const HistoryList = () => {
   const finished = finishedSessions(sessions)
 
   return (
-    <Screen id="history" title="History" subtitle={`${finished.length} workouts logged`} large>
+    <Screen
+      id="history"
+      title="History"
+      subtitle={`${finished.length} workouts logged`}
+      large
+      blurb="Every workout you have saved, newest first. Open one to see each set exactly as you logged it"
+    >
         {finished.length === 0 && (
           <div className="empty">Nothing logged yet</div>
         )}

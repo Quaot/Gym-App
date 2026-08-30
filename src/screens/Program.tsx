@@ -27,6 +27,7 @@ export const ProgramScreen = () => {
       title="Program"
       subtitle={program.name}
       large
+      blurb="The plan itself: what each day contains and how many sets of what. Editing here changes future workouts and never touches one you have already saved"
       trailing={
         <>
           <button className="btn-plain" onClick={() => setManaging(true)}>Splits</button>

@@ -39,17 +39,20 @@ interface ExerciseMeta {
 }
 
 /** Warm-up schemes, by role. */
-const HEAVY: WarmupStep[] = [
+/**
+ * The one warm-up ramp, as percentages of the weight you are about to work
+ * with. It is built only for the barbell lift that opens a day, which is
+ * where a cold heavy first set can actually hurt you. Everything after it is
+ * done on a body that is already warm, and everything on a machine or a cable
+ * carries a fraction of the risk, so neither gets rows it would only have to
+ * delete.
+ */
+const RAMP: WarmupStep[] = [
   { pct: 0.5, reps: 6 },
   { pct: 0.7, reps: 4 },
   { pct: 0.85, reps: 2 },
   { pct: 0.9, reps: 1 },
 ]
-const COMPOUND: WarmupStep[] = [
-  { pct: 0.5, reps: 6 },
-  { pct: 0.75, reps: 3 },
-]
-const LIGHT: WarmupStep[] = [{ pct: 0.5, reps: 10 }]
 const NONE: WarmupStep[] = []
 
 /** Every exercise mentioned by any preset, keyed by slug. Built as a side
@@ -87,18 +90,11 @@ const ex = (
 }
 
 /** Compact meta constructors. */
-const heavy = (equipment: Equipment): ExerciseMeta => ({ equipment, warmups: HEAVY, extend: 2 })
-const compound = (equipment: Equipment): ExerciseMeta => ({ equipment, warmups: COMPOUND, extend: 2 })
-const iso = (equipment: Equipment, warm = false): ExerciseMeta => ({
-  equipment,
-  warmups: warm ? LIGHT : NONE,
-  extend: 5,
-})
-const body = (warm = false): ExerciseMeta => ({
-  equipment: 'bodyweight',
-  warmups: warm ? LIGHT : NONE,
-  extend: 5,
-})
+/** Opens a day with a barbell: the only case that earns a ramp. */
+const heavy = (equipment: Equipment): ExerciseMeta => ({ equipment, warmups: RAMP, extend: 2 })
+const compound = (equipment: Equipment): ExerciseMeta => ({ equipment, warmups: NONE, extend: 2 })
+const iso = (equipment: Equipment): ExerciseMeta => ({ equipment, warmups: NONE, extend: 5 })
+const body = (): ExerciseMeta => ({ equipment: 'bodyweight', warmups: NONE, extend: 5 })
 
 const day = (name: string, notes: string, exercises: ExerciseTemplate[]): DayTemplate => ({
   id: uid(),
@@ -171,7 +167,7 @@ export const pplProgram = (): Program => ({
         'Log the hold in seconds, per side; closes the Bottom-Half Dumbbell Pullover superset, so rest, then repeat the pair'),
       ex('Omni-Directional Cable Face Pull', 3, 12, 15, 90, iso('cable'),
         'Set 1 low to high; set 2 straight on; set 3 high to low'),
-      ex('EZ-Bar Biceps Curl', 3, 6, 8, 120, iso('barbell', true)),
+      ex('EZ-Bar Biceps Curl', 3, 6, 8, 120, iso('barbell')),
       ex('Bottom-Half Dumbbell Preacher Curl', 2, 10, 12, 90, iso('dumbbell'),
         'Stretched half only'),
     ]),
@@ -202,11 +198,11 @@ export const pplProgram = (): Program => ({
       ex('Machine Lateral Raise', 3, 15, 20, 90, iso('machine'),
         'Constant tension, no pause at the bottom'),
       ex('Cross-Body Triceps Extension', 3, 10, 12, 90, iso('cable')),
-      ex('EZ-Bar Biceps Curl', 3, 8, 10, 120, iso('barbell', true)),
+      ex('EZ-Bar Biceps Curl', 3, 8, 10, 120, iso('barbell')),
     ]),
 
     day('Lower 1', LEG_WARMUP, [
-      ex('Romanian Deadlift', 4, 8, 10, 180, compound('barbell'),
+      ex('Romanian Deadlift', 4, 8, 10, 180, heavy('barbell'),
         'Push the hips back and stop where the stretch ends'),
       ex('Leg Press', 3, 15, 20, 120, compound('machine'),
         'Feet low on the platform'),
@@ -223,7 +219,7 @@ export const pplProgram = (): Program => ({
       ex('Incline Barbell Bench Press', 3, 5, 15, 180, heavy('barbell'),
         'Set 1 moderate for 8; set 2 heavy for 5; set 3 light for 15'),
       ex('Machine Shoulder Press', 3, 10, 12, 120, compound('machine')),
-      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120, iso('barbell', true),
+      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120, iso('barbell'),
         'Rest the bar on the floor between reps'),
       ex('Bent-Over Cable Fly', 3, 10, 12, 90, iso('cable')),
       ex('Machine Lateral Raise', 3, 20, 20, 90, iso('machine'),
@@ -260,7 +256,7 @@ export const pplProgram = (): Program => ({
     ]),
 
     day('Upper 2', UPPER_WARMUP, [
-      ex('Barbell Larsen Press', 3, 8, 10, 180, compound('barbell'),
+      ex('Barbell Larsen Press', 3, 8, 10, 180, heavy('barbell'),
         'Legs straight on the floor; no leg drive'),
       ex('Pull-Up', 3, 6, 10, 150, body(),
         'Hang weight from a belt once you clear 10 clean reps'),
@@ -269,7 +265,7 @@ export const pplProgram = (): Program => ({
         'Per arm'),
       ex('Cross-Body Cable Y-Raise', 3, 12, 15, 90, iso('cable')),
       ex('Reverse Pec Deck', 3, 12, 15, 90, iso('machine')),
-      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120, iso('barbell', true),
+      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120, iso('barbell'),
         'Rest the bar on the floor between reps'),
       ex('Overhead Cable Biceps Curl', 3, 10, 12, 90, iso('cable')),
     ]),
@@ -321,7 +317,7 @@ export const pplulProgram = (): Program => ({
         'Change your grip each set'),
       ex('Omni-Directional Cable Face Pull', 3, 12, 15, 90, iso('cable'),
         'Set 1 low to high; set 2 straight on; set 3 high to low'),
-      ex('EZ-Bar Biceps Curl', 3, 6, 8, 120, iso('barbell', true)),
+      ex('EZ-Bar Biceps Curl', 3, 6, 8, 120, iso('barbell')),
       ex('Bottom-Half Dumbbell Preacher Curl', 2, 10, 12, 90, iso('dumbbell'),
         'Stretched half only'),
     ]),
@@ -349,7 +345,7 @@ export const pplulProgram = (): Program => ({
         'Per arm'),
       ex('Reverse Pec Deck', 3, 10, 12, 90, iso('machine')),
       ex('Overhead Cable Biceps Curl', 3, 10, 12, 90, iso('cable')),
-      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120, iso('barbell', true),
+      ex('Floor-Reset Skullcrusher', 3, 6, 8, 120, iso('barbell'),
         'Rest the bar on the floor between reps'),
     ]),
 

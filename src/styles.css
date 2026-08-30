@@ -465,6 +465,14 @@ body[data-tape-drag] .scroller { overflow: hidden !important; }
   font-weight: 700;
   letter-spacing: -0.012em;
 }
+.large-title .blurb {
+  margin: 10px 0 0;
+  font-size: 15px;
+  line-height: 20px;
+  letter-spacing: -0.01em;
+  color: var(--label-2);
+  max-width: 34em;
+}
 .large-title .sub {
   color: var(--label-2);
   font-size: 15px;
@@ -828,12 +836,24 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ex-card { padding: 14px var(--pad) 10px; }
 .ex-head { display: flex; align-items: center; gap: 8px; }
 .ex-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
   flex: 1;
   min-width: 0;
   font-family: var(--font-serif);
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.012em;
+}
+/* A long name gives way to the hint, since the hint is the way in. */
+.ex-name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -896,6 +916,91 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   to { opacity: 1; transform: none; }
 }
 .set-editor .complete { margin-top: 14px; }
+
+.welcome p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  color: var(--label-2);
+}
+.welcome p:first-child { color: var(--label); font-size: 17px; line-height: 23px; }
+
+/* Where you are, and what the next block of rows is. */
+.ex-step { margin-bottom: 2px; }
+.set-group {
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--label-2);
+  margin: 10px 2px 4px;
+}
+
+/* The guide: prose, so it gets prose measure and spacing. */
+.guide-intro { margin: 0 4px 18px; }
+.guide-entry { display: block; padding: 14px var(--pad); }
+.guide-q {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+.guide-a {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+}
+.guide-a li {
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  color: var(--label-2);
+}
+
+/* The name is a question you can ask: how do I do this one. */
+.how-hint {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--fill-3);
+  color: var(--label-2);
+  font-family: var(--font-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 19px;
+  text-align: center;
+}
+.ex-name:active .how-hint { background: var(--accent-soft); color: var(--accent); }
+
+.howto { display: grid; gap: 14px; }
+.howto-part p {
+  margin: 2px 0 0;
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  color: var(--label);
+}
+.howto-label {
+  font-size: 13px;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--accent);
+}
+.howto-part.warn .howto-label { color: var(--orange); }
+
+/* One tap writes every set this screen was already suggesting in grey. */
+.fill-all {
+  min-height: 42px;
+  font-size: 15px;
+  margin: 6px 0 2px;
+}
+
+/* The button stays one line; the reason it can offer anything sits under it. */
+.fill-why {
+  text-align: center;
+  margin: 0 0 6px;
+}
 
 /* What to hang on the bar: the one sum you should never have to do tired. */
 .plates-block { margin: 6px 0 2px; }
