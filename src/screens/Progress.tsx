@@ -12,7 +12,7 @@ import {
 import { sleepCorrelation } from '../lib/correlation'
 import { sleepByNight } from '../lib/sleep'
 import { finishedSessions, personalBest, est1RM, sessionVolume } from '../lib/history'
-import { fmtDate, fmtWeight, uid } from '../lib/util'
+import { fmtDate, fmtWeight, uid, plural } from '../lib/util'
 import { fmtDuration } from '../lib/util'
 import { sessionTimeSplit } from '../lib/timing'
 import { TapeInput } from '../components/TapeInput'
@@ -129,7 +129,7 @@ export const ProgressScreen = () => {
     <Screen
       id="progress"
       title="Progress"
-      subtitle={`${finished.length} workouts on record`}
+      subtitle={`${plural(finished.length, 'workout')} on record`}
       large
       help={[
         'What your logged sets add up to',
@@ -276,7 +276,7 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
     <Screen
       id={`progress/${exerciseId}`}
       title={exercise?.name ?? 'Exercise'}
-      subtitle={`${trend.length} sessions logged`}
+      subtitle={`${plural(trend.length, 'session')} logged`}
       leading={<BackButton />}
     >
         <div className="seg" role="tablist" aria-label="Time range">
@@ -307,12 +307,12 @@ export const ExerciseDetail = ({ exerciseId }: { exerciseId: string }) => {
             </div>
             <div className="t-footnote label-2 num">
               {forecast.perWeek > 0
-                ? `${fmtWeight(forecast.perWeek)} ${unit} a week, ${forecast.inDays} days out`
-                : `${forecast.inDays} days out`}
+                ? `${fmtWeight(forecast.perWeek)} ${unit} a week, ${plural(forecast.inDays, 'day')} out`
+                : `${plural(forecast.inDays, 'day')} out`}
             </div>
             {showWorking && (
               <div className="t-caption label-3 forecast-working">
-                A line through your last {trend.length} sessions, which explains{' '}
+                A line through your last {plural(trend.length, 'session')}, which explains{' '}
                 {Math.round(forecast.r2 * 100)}% of them. It is your own trend read forward,
                 so treat it as a direction rather than a promise
               </div>

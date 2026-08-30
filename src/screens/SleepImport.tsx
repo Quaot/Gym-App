@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useAppSelector, dispatch } from '../store/store'
 import { aggregateSleep } from '../lib/sleep'
 import type { SleepInterval } from '../lib/sleep'
+import { plural } from '../lib/util'
 
 type Progress =
   | { phase: 'idle' }
@@ -64,7 +65,7 @@ export const SleepImportCard = () => {
   return (
     <div className="group stack" style={{ padding: 14 }}>
       <p className="t-caption label-3">
-        {sleepCount > 0 ? `${sleepCount} nights on record` : 'No sleep on record yet'}
+        {sleepCount > 0 ? `${plural(sleepCount, 'night')} on record` : 'No sleep on record yet'}
       </p>
       <button
         className="btn-gray block"
@@ -82,7 +83,7 @@ export const SleepImportCard = () => {
       {progress.phase === 'done' && (
         <p className="t-subhead" style={{ color: 'var(--accent)' }}>
           {progress.nights > 0
-            ? `Imported ${progress.nights} nights of sleep`
+            ? `Imported ${plural(progress.nights, 'night')} of sleep`
             : 'No sleep records found in that file'}
         </p>
       )}
