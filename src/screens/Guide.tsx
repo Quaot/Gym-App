@@ -57,10 +57,12 @@ const SECTIONS: { title: string; entries: Entry[] }[] = [
         ],
       },
       {
-        q: 'The fill button',
+        q: 'Filling them in',
         a: [
-          'Fill sets from writes those suggestions into every set at once, and says where they came from',
-          'It never touches a set you have already logged',
+          'Two taps anywhere quiet on an exercise writes every suggestion it has into its sets',
+          'Fill all, at the top of the workout, does the same for every exercise at once',
+          'The same thing sits in the ⋯ menu of each exercise, which also says where the numbers came from',
+          'None of them touch a set you have already logged',
         ],
       },
       {

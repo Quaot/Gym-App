@@ -170,6 +170,14 @@ export const SettingsScreen = () => {
             <input type="checkbox" className="switch" checked={settings.tickSound}
               onChange={(e) => dispatch({ type: 'setSettings', patch: { tickSound: e.target.checked } })} />
           </label>
+          <label className="row switch-row">
+            <InfoPopover content="Wheel detents, a set logged and the rest timer ending. An iPhone only feels these on iOS 17.4 or later, and some browsers give nothing at all">
+              <span className="t-subhead holdable">Haptics</span>
+            </InfoPopover>
+            <span className="spacer" />
+            <input type="checkbox" className="switch" checked={settings.haptics}
+              onChange={(e) => dispatch({ type: 'setSettings', patch: { haptics: e.target.checked } })} />
+          </label>
           <RestAlerts />
         </div>
 

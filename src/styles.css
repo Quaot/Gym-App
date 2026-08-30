@@ -1034,11 +1034,18 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .howto-part.warn .howto-label { color: var(--orange); }
 
 /* One tap writes every set this screen was already suggesting in grey. */
-.fill-all {
-  min-height: 42px;
+/* One quiet way to write the whole workout at once. It is a text button, not
+   a slab, because a suggestion should be available rather than insistent. */
+.fill-session {
+  display: block;
+  margin: 2px auto 10px;
+  padding: 6px 10px;
   font-size: 15px;
-  margin: 6px 0 4px;
+  color: var(--accent);
 }
+
+/* Two taps on a card fill it, and iOS must not read that as a zoom. */
+.ex-card { touch-action: manipulation; }
 /* What to hang on the bar: the one sum you should never have to do tired. */
 .plates-block { margin: 6px 0 2px; }
 .plate-bar { display: block; margin: 0 auto 2px; max-width: 260px; }

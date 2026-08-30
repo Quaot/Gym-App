@@ -6,6 +6,7 @@ import { EDGE, parallaxOffset, swipeCommits } from '../lib/gestures'
 import { IconChart, IconClock, IconCog, IconDumbbell, IconHome } from '../components/icons'
 import { RestBar } from './RestBar'
 import { Welcome } from './Welcome'
+import { setHapticsEnabled } from '../lib/haptics'
 import { Home } from '../screens/Home'
 import { SessionScreen } from '../screens/Session'
 import { HistoryList, SessionDetail } from '../screens/History'
@@ -103,6 +104,7 @@ export const App = () => {
   const segments = useRoute()
   const hasActive = useAppSelector((s) => s.activeSessionId !== null)
   const seenWelcome = useAppSelector((s) => s.settings.seenWelcome)
+  const haptics = useAppSelector((s) => s.settings.haptics)
   const path = pathOf(segments)
   const depth = depthOf(segments)
   const modal = isModal(segments)
@@ -110,6 +112,10 @@ export const App = () => {
   useEffect(() => {
     document.body.dataset.section = SECTION[segments[0] ?? ''] ?? 'today'
   }, [segments])
+
+  // The haptics module is called from places that have no business reading
+  // the store, so the setting is mirrored into it here instead.
+  useEffect(() => setHapticsEnabled(haptics), [haptics])
 
   const stage = useRef<HTMLDivElement | null>(null)
   const [anim, setAnim] = useState<{ from: string[]; dir: 'push' | 'pop'; key: number } | null>(null)

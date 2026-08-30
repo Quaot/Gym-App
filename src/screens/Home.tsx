@@ -8,6 +8,7 @@ import type { DayTemplate, Session } from '../types'
 import { Sheet } from '../components/Sheet'
 import { Screen } from '../app/Screen'
 import { IconChevron, IconDumbbell, IconFlame } from '../components/icons'
+import { haptic } from '../lib/haptics'
 
 /** Next day in the rotation after whatever was trained last. */
 const suggestedDay = (days: DayTemplate[], finished: Session[]): DayTemplate | null => {
@@ -57,6 +58,7 @@ export const Home = () => {
   const days = streak(finished)
 
   const start = (dayId: string) => {
+    haptic('select')
     act.startSession(dayId)
     navigate('/session')
   }

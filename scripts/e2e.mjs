@@ -1117,7 +1117,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 }
 
 /* ================================================================== *
- * 24. The fill button writes a whole exercise from last time
+ * 24. Filling is something you ask for, never something you are offered
  * ================================================================== */
 {
   const { ctx, page, errors } = await newPage()
@@ -1126,7 +1126,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.reload()
   await ready(page)
 
-  // Sample data is the quickest honest history for the button to read.
+  // Sample data is the quickest honest history for a fill to read.
   await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('button', { name: 'Add sample data' }).click()
   await page.waitForTimeout(400)
@@ -1135,37 +1135,58 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.getByRole('button', { name: 'Start', exact: true }).first().click()
   await page.waitForSelector('.ex-card')
 
-  const fill = page.locator('.fill-all').first()
-  assert(await fill.count() === 1, '24a. an exercise with history offers to fill itself')
-  const label = await fill.innerText()
-  assert(/^Fill \d+ sets? (from last time|to start)$/.test(label),
-    '24b. the button says how many sets and where they come from', label)
-  const offered = Number(label.match(/\d+/)[0])
-  assert(offered > 0, '24c. it offers a real number of sets', label)
-  assert(label.split('\n').length === 1, '24h. and says it on one line', label)
+  assert(await page.locator('.ex-card .fill-all').count() === 0,
+    '24a. no exercise pushes a fill button at you')
+  const cards = await page.locator('.ex-card').count()
+  const all = page.locator('.fill-session')
+  assert(await all.count() === 1, '24b. the workout carries exactly one way to fill everything')
+  const allLabel = await all.innerText()
+  assert(/^Fill all \d+ sets$/.test(allLabel), '24c. which says how much it would write', allLabel)
 
-  await fill.click()
+  // Two taps on the quiet part of a card fill that exercise and no other.
+  await page.locator('.ex-card').first().locator('.last-line').dblclick()
   await page.waitForTimeout(300)
   await flushStorage(page)
   const filled = await readState(page)
   const live = filled.sessions.find((s) => s.id === filled.core.activeSessionId)
   const first = live.exercises[0]
-  const written = first.sets.filter((s) => s.reps !== null).length
-  assert(written === first.sets.length, '24d. every set in the exercise now holds a number',
-    `${written}/${first.sets.length}`)
-  const weighted = first.sets.filter((s) => s.weight !== null).length
-  assert(weighted === first.sets.length, '24e. warm-ups included, since they are the risky ones',
-    `${weighted}/${first.sets.length}`)
+  assert(first.sets.every((s) => s.reps !== null), '24d. two taps fill every set of that exercise',
+    `${first.sets.filter((s) => s.reps !== null).length}/${first.sets.length}`)
+  assert(first.sets.every((s) => s.weight !== null),
+    '24e. warm-ups included, since they are the risky ones')
   assert(first.sets.every((s) => !s.done), '24f. filling is not logging: nothing is completed')
+  const untouched = live.exercises[1]
+  assert(untouched.sets.every((s) => s.reps === null),
+    '24g. and it leaves every other exercise alone')
 
   // The rep range describes the working sets, so the pill must count those.
   const pill = await page.locator('.ex-card').first().locator('.pill.num').innerText()
   const working = first.sets.filter((s) => !s.warmup).length
   assert(Number(pill.match(/^\d+/)[0]) === working,
-    '24i. the target pill counts working sets, not the warm-up ramp',
+    '24h. the target pill counts working sets, not the warm-up ramp',
     `${pill} with ${working} working of ${first.sets.length}`)
-  assert(await page.locator('.ex-card').first().locator('.fill-all').count() === 0,
-    '24g. and it stops offering once there is nothing left to change')
+
+  // The menu is the discoverable version of the gesture, and explains itself.
+  await page.locator('.ex-card').nth(1).locator('.ex-menu').click()
+  await page.waitForSelector('.sheet')
+  const menu = await page.locator('.sheet').innerText()
+  assert(/Fill \d+ sets? (from last time|to start)/.test(menu),
+    '24i. the exercise menu offers the same fill', menu.split('\n').slice(0, 3).join(' / '))
+  assert(/Two taps on the exercise/.test(menu), '24j. and teaches the gesture')
+  await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+  await page.waitForSelector('.sheet-backdrop', { state: 'detached' })
+
+  // Fill all finishes the job, then stops offering.
+  await all.click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const done = await readState(page)
+  const session = done.sessions.find((s) => s.id === done.core.activeSessionId)
+  const empty = session.exercises.filter((e) => e.sets.some((x) => x.reps === null))
+  assert(empty.length === 0, '24k. Fill all writes every exercise in the workout',
+    `${empty.length} of ${cards} left empty`)
+  assert(await page.locator('.fill-session').count() === 0,
+    '24l. and goes away once there is nothing left to write')
   assert(errors.length === 0, '24. no console errors', errors.join('; '))
   await ctx.close()
 }
@@ -1372,6 +1393,39 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   const guideText = await page.locator('.screen-inner[data-screen="settings/guide"]').innerText()
   assert(/loads a barbell/.test(guideText), '28h. and so does the guide')
   assert(errors.length === 0, '28. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 29. Feedback you can feel, and a switch to stop feeling it
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.waitForTimeout(250)
+  const row = page.locator('.switch-row').filter({ hasText: 'Haptics' })
+  assert(await row.count() === 1, '29a. haptics are a setting, not a fact of life')
+  const toggle = row.locator('input.switch')
+  assert(await toggle.isChecked(), '29b. and they are on until you say otherwise')
+
+  await toggle.click()
+  await page.waitForTimeout(200)
+  await flushStorage(page)
+  const off = await readState(page)
+  assert(off.core.settings.haptics === false, '29c. turning them off is remembered')
+
+  await page.reload()
+  await ready(page)
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.waitForTimeout(250)
+  assert(!(await page.locator('.switch-row').filter({ hasText: 'Haptics' })
+    .locator('input.switch').isChecked()), '29d. and survives a reload')
+  assert(errors.length === 0, '29. no console errors', errors.join('; '))
   await ctx.close()
 }
 

@@ -126,6 +126,8 @@ export interface Settings {
   weightStep: number
   /** Audible detent ticks on the tape input. */
   tickSound: boolean
+  /** Feedback you can feel: wheel detents, a set logged, the timer ending. */
+  haptics: boolean
   /** Your bodyweight, used to size jumps on bodyweight movements. */
   bodyweight: number
   /** The bar you load, so the app can tell you which plates to hang on it. */
