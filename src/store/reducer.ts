@@ -1,8 +1,9 @@
 import type {
   AppState, DayTemplate, ExerciseTemplate, Exercise, ID, LoggedSet, Program,
-  RestState, Session, SessionExercise, Settings, SleepEntry,
+  RestState, Session, SessionExercise, Settings, SleepEntry, Unit,
 } from '../types'
 import { move } from '../lib/util'
+import { convertState } from '../lib/units'
 
 /**
  * Pure reducer: no uid(), no Date.now(), no I/O. Anything that needs an id or
@@ -12,6 +13,7 @@ import { move } from '../lib/util'
 export type Action =
   | { type: 'replaceState'; state: AppState }
   | { type: 'setSettings'; patch: Partial<Settings> }
+  | { type: 'setUnit'; unit: Unit; convert: boolean }
   // catalog
   | { type: 'upsertCatalog'; exercise: Exercise }
   // programs
@@ -91,6 +93,15 @@ export const reducer = (state: AppState, action: Action): AppState => {
 
     case 'setSettings':
       return { ...state, settings: { ...state.settings, ...action.patch } }
+
+    case 'setUnit': {
+      if (action.unit === state.settings.unit) return state
+      // Relabelling is a real choice: it is what you want when you logged in
+      // the wrong unit by mistake. It is just never the silent default.
+      return action.convert
+        ? convertState(state, action.unit)
+        : { ...state, settings: { ...state.settings, unit: action.unit } }
+    }
 
     case 'upsertCatalog':
       return { ...state, catalog: { ...state.catalog, [action.exercise.id]: action.exercise } }

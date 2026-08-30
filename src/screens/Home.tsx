@@ -2,12 +2,13 @@ import { useState } from 'react'
 import { navigate } from '../lib/router'
 import { useAppSelector, dispatch } from '../store/store'
 import { act } from '../store/actions'
-import { fmtDate, fmtDuration } from '../lib/util'
+import { fmtDate, fmtDuration, plural, pluralize } from '../lib/util'
 import { finishedSessions, sessionSetCount, sessionVolume } from '../lib/history'
 import type { DayTemplate, Session } from '../types'
 import { Sheet } from '../components/Sheet'
 import { Screen } from '../app/Screen'
 import { IconChevron, IconDumbbell, IconFlame } from '../components/icons'
+import { haptic } from '../lib/haptics'
 
 /** Next day in the rotation after whatever was trained last. */
 const suggestedDay = (days: DayTemplate[], finished: Session[]): DayTemplate | null => {
@@ -57,6 +58,7 @@ export const Home = () => {
   const days = streak(finished)
 
   const start = (dayId: string) => {
+    haptic('select')
     act.startSession(dayId)
     navigate('/session')
   }
@@ -71,6 +73,11 @@ export const Home = () => {
         month: 'long',
       })}
       large
+      help={[
+        'Your rotation, and the day that comes next',
+        'The order is a suggestion rather than a rule, so start any day you like by tapping it',
+        'A workout you leave unfinished waits here until you come back to it',
+      ]}
     >
         {active && (
           <div className="group">
@@ -83,7 +90,7 @@ export const Home = () => {
               </div>
               <div className="value num">
                 {sessionSetCount(active)}
-                <span className="unit">sets logged</span>
+                <span className="unit">{pluralize(sessionSetCount(active), 'set')} logged</span>
               </div>
             </button>
           </div>
@@ -101,7 +108,7 @@ export const Home = () => {
               </div>
               <div className="value num">
                 {sessionSetCount(s)}
-                <span className="unit">sets, never finished</span>
+                <span className="unit">{pluralize(sessionSetCount(s), 'set')}, never finished</span>
               </div>
             </button>
           </div>
@@ -117,12 +124,12 @@ export const Home = () => {
                   <IconDumbbell />
                   <span className="name">{next.name}</span>
                   <span className="when">
-                    {next.exercises.length === 0 ? 'Empty' : `${next.exercises.length} exercises`}
+                    {next.exercises.length === 0 ? 'Empty' : plural(next.exercises.length, 'exercise')}
                   </span>
                 </div>
                 <div className="value num">
                   {next.exercises.reduce((n, e) => n + e.sets, 0)}
-                  <span className="unit">sets planned</span>
+                  <span className="unit">{pluralize(next.exercises.reduce((n, e) => n + e.sets, 0), 'set')} planned</span>
                 </div>
               </button>
               {next.exercises.length === 0 ? (

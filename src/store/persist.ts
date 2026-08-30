@@ -1,9 +1,18 @@
 import type { AppState } from '../types'
 import type { AppStore } from './store'
-import { decodeV2, freshState, migrateV1, migrateV2, migrateV3, V1_KEY } from './migrate'
+import {
+  decodeV2, freshState, migrateV1, migrateV2, migrateV3, migrateV4, V1_KEY,
+} from './migrate'
 
 export const KEYS = {
-  core: 'gym:v4:core', // catalog, programs, settings, activeProgramId, activeSessionId
+  core: 'gym:v5:core', // catalog, programs, settings, activeProgramId, activeSessionId
+  sessions: 'gym:v5:sessions',
+  sleep: 'gym:v5:sleep',
+  rest: 'gym:v5:rest',
+} as const
+
+const V4_KEYS = {
+  core: 'gym:v4:core',
   sessions: 'gym:v4:sessions',
   sleep: 'gym:v4:sleep',
   rest: 'gym:v4:rest',
@@ -69,7 +78,7 @@ const retire = (keys: string[]) => {
   }
 }
 
-/** Loads state: v4 slices, else v3, v2 or a v1 blob migrated, else fresh. */
+/** Loads state: v5 slices, else v4, v3, v2 or a v1 blob migrated, else fresh. */
 export const loadInitialState = (): AppState => {
   try {
     const core = readJSON(KEYS.core)
@@ -82,14 +91,27 @@ export const loadInitialState = (): AppState => {
       })
     }
 
+    const v4core = readJSON(V4_KEYS.core)
+    if (v4core !== null && typeof v4core === 'object') {
+      const migrated = migrateV4({
+        ...(v4core as Record<string, unknown>),
+        sessions: readJSON(V4_KEYS.sessions) ?? [],
+        sleep: readJSON(V4_KEYS.sleep) ?? [],
+        rest: readJSON(V4_KEYS.rest),
+      })
+      persistAll(migrated)
+      retire(Object.values(V4_KEYS))
+      return migrated
+    }
+
     const v3core = readJSON(V3_KEYS.core)
     if (v3core !== null && typeof v3core === 'object') {
-      const migrated = migrateV3({
+      const migrated = migrateV4(migrateV3({
         ...(v3core as Record<string, unknown>),
         sessions: readJSON(V3_KEYS.sessions) ?? [],
         sleep: readJSON(V3_KEYS.sleep) ?? [],
         rest: readJSON(V3_KEYS.rest),
-      })
+      }))
       persistAll(migrated)
       retire(Object.values(V3_KEYS))
       return migrated
@@ -97,12 +119,12 @@ export const loadInitialState = (): AppState => {
 
     const v2core = readJSON(V2_KEYS.core)
     if (v2core !== null && typeof v2core === 'object') {
-      const migrated = migrateV3(migrateV2({
+      const migrated = migrateV4(migrateV3(migrateV2({
         ...(v2core as Record<string, unknown>),
         sessions: readJSON(V2_KEYS.sessions) ?? [],
         sleep: readJSON(V2_KEYS.sleep) ?? [],
         rest: readJSON(V2_KEYS.rest),
-      }))
+      })))
       persistAll(migrated)
       retire(Object.values(V2_KEYS))
       return migrated
@@ -110,7 +132,7 @@ export const loadInitialState = (): AppState => {
 
     const v1 = readJSON(V1_KEY)
     if (v1 !== null) {
-      const migrated = migrateV3(migrateV2(migrateV1(v1)))
+      const migrated = migrateV4(migrateV3(migrateV2(migrateV1(v1))))
       persistAll(migrated)
       retire([V1_KEY])
       return migrated

@@ -52,7 +52,12 @@ export const act = {
       startedAt: Date.now(),
       finishedAt: null,
       notes: '',
-      exercises: day.exercises.map((t) => {
+      exercises: day.exercises.map((t, i) => {
+        // The rule, enforced where it cannot be got round: warm-up rows are
+        // built for the first exercise of a day and for nothing after it. A
+        // day edited by hand, or one a migration deliberately left alone, can
+        // still carry an old plan on a fifth movement; it is ignored here.
+        const plan = i === 0 ? t.warmups : []
         const exercise: SessionExercise = {
           id: uid(),
           exerciseId: t.exerciseId,
@@ -61,7 +66,7 @@ export const act = {
           repHigh: t.repHigh,
           repCap: t.repCap,
           restSec: t.restSec,
-          warmupPlan: t.warmups,
+          warmupPlan: plan,
           notes: t.notes,
           sets: Array.from({ length: Math.max(1, t.sets) }, newSet),
         }
@@ -70,7 +75,7 @@ export const act = {
         // built from the progression suggestion rather than typed in again.
         const planned = suggestionFor(s, exercise).suggestion.weight
         const increment = s.catalog[t.exerciseId]?.increment ?? s.settings.weightStep
-        const rows = warmupRows(t.warmups, planned, increment)
+        const rows = warmupRows(plan, planned, increment)
         if (rows.length > 0) {
           exercise.sets = [
             ...rows.map((row) => ({ ...newSet(), weight: row.weight, reps: row.reps, warmup: true })),

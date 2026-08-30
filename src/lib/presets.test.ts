@@ -274,20 +274,82 @@ describe('v3 preset data', () => {
     }
   })
 
-  it('arms the heavy compounds with a full warm-up ramp', () => {
+  it('only ever ramps the exercise that opens a day', () => {
+    // The whole warm-up policy, stated once. Nothing after the first movement
+    // gets rows: by then you are warm, and a ramp on every machine was the
+    // thing that made the workout screen unreadable.
+    for (const p of [program, pplul]) {
+      for (const d of p.days) {
+        d.exercises.forEach((t, i) => {
+          if (i > 0) expect(t.warmups, `${d.name}: ${t.exerciseId}`).toEqual([])
+        })
+      }
+    }
+  })
+
+  it('always ramps a barbell lift that opens a day, since that is the risky one', () => {
+    for (const p of [program, pplul]) {
+      for (const d of p.days) {
+        const first = d.exercises[0]
+        if (catalog[first.exerciseId].equipment !== 'barbell') continue
+        expect(first.warmups.length, `${d.name}: ${first.exerciseId}`).toBe(4)
+      }
+    }
+  })
+
+  it('leaves the Pull openers on the ramp the programme itself prescribes', () => {
+    // Standardising these to the barbell pyramid would be a tidy-up that
+    // quietly overwrote a prescription, so it is pinned in both splits.
+    const pulldownRamp = [
+      { pct: 0.55, reps: 10 }, { pct: 0.7, reps: 10 }, { pct: 0.85, reps: 10 },
+    ]
+    const pull1 = program.days.find((d) => d.name === 'Pull 1')!
+    expect(pull1.exercises[0].exerciseId).toBe('lat-pulldown')
+    expect(pull1.exercises[0].warmups).toEqual(pulldownRamp)
+
+    const pull = pplul.days.find((d) => d.name === 'Pull')!
+    expect(pull.exercises[0].warmups).toEqual(pulldownRamp)
+
+    // Pull 2 opens on a single-arm cable pulldown, which earns nothing.
+    const pull2 = program.days.find((d) => d.name === 'Pull 2')!
+    expect(pull2.exercises[0].exerciseId).toBe('half-kneeling-single-arm-lat-pulldown')
+    expect(pull2.exercises[0].warmups).toEqual([])
+  })
+
+  it('gives no day more than one exercise with warm-up rows', () => {
+    for (const p of [program, pplul]) {
+      for (const d of p.days) {
+        const ramped = d.exercises.filter((t) => t.warmups.length > 0)
+        expect(ramped.length, d.name).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+
+  it('ramps in rising percentages that finish close to the working weight', () => {
     for (const p of [program, pplul]) {
       for (const d of p.days) {
         for (const t of d.exercises) {
-          if (['squat', 'deadlift', 'barbell-bench-press', 'incline-barbell-bench-press'].includes(t.exerciseId)) {
-            expect(t.warmups.length, t.exerciseId).toBeGreaterThanOrEqual(3)
-            const last = t.warmups[t.warmups.length - 1]
-            expect(last.pct, t.exerciseId).toBeGreaterThanOrEqual(0.75)
-            const pcts = t.warmups.map((w) => w.pct)
-            expect([...pcts].sort((a, b) => a - b), t.exerciseId).toEqual(pcts)
-          }
+          if (t.warmups.length === 0) continue
+          const pcts = t.warmups.map((w) => w.pct)
+          expect([...pcts].sort((a, b) => a - b), t.exerciseId).toEqual(pcts)
+          expect(pcts[0], t.exerciseId).toBeLessThanOrEqual(0.6)
+          expect(pcts[pcts.length - 1], t.exerciseId).toBeGreaterThanOrEqual(0.85)
+          // Reps fall as the weight rises, or the ramp is fatigue, not warmth.
+          const reps = t.warmups.map((w) => w.reps)
+          expect([...reps].sort((a, b) => b - a), t.exerciseId).toEqual(reps)
         }
       }
     }
+  })
+
+  it('opens every day with the same movement it always did', () => {
+    // The policy change must not have quietly reordered anyone's programme.
+    expect(program.days.map((d) => catalog[d.exercises[0].exerciseId].name)).toEqual([
+      'Barbell Bench Press', 'Lat Pulldown', 'Squat',
+      'Incline Barbell Bench Press', 'Romanian Deadlift', 'Incline Barbell Bench Press',
+      'Half-Kneeling Single-Arm Lat Pulldown', 'Deadlift', 'Barbell Larsen Press',
+      'Paused Squat',
+    ])
   })
 
   it('keeps warm-up prescriptions out of the notes', () => {

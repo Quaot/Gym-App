@@ -7,7 +7,7 @@ import { IconTrash } from '../components/icons'
 import { Screen } from '../app/Screen'
 import { BackButton } from '../app/BackButton'
 import { formatExerciseList, parseExerciseList } from '../lib/parse'
-import { fmtClock } from '../lib/util'
+import { fmtClock, plural } from '../lib/util'
 import { pplProgram, pplulProgram, presetCatalog } from '../lib/presets'
 import { resolveExercise } from '../lib/catalog'
 import { uid } from '../lib/util'
@@ -27,6 +27,11 @@ export const ProgramScreen = () => {
       title="Program"
       subtitle={program.name}
       large
+      help={[
+        'The plan itself: what each day contains and how many sets of what',
+        'Editing here changes future workouts and never touches one you have already saved',
+        'Warm-up rows are not listed, because the app builds them from the weight you are about to lift',
+      ]}
       trailing={
         <>
           <button className="btn-plain" onClick={() => setManaging(true)}>Splits</button>
@@ -56,14 +61,19 @@ export const ProgramScreen = () => {
         <div className="group">
         {program.days.map((day, i) => (
           <div key={day.id} className="row-item">
-            <div style={{ flex: 1, minWidth: 0 }}>
+            {/* The name is the biggest thing on the row, so it opens the day
+                rather than sitting there inert next to a small Edit. */}
+            <button
+              className="row-open"
+              onClick={() => navigate(`/program/${day.id}`)}
+            >
               <div className="name">{day.name}</div>
               <div className="t-footnote label-2">
                 {day.exercises.length === 0
                   ? 'Empty'
-                  : `${day.exercises.length} exercises · ${day.exercises.reduce((n, e) => n + e.sets, 0)} sets`}
+                  : `${plural(day.exercises.length, 'exercise')} · ${plural(day.exercises.reduce((n, e) => n + e.sets, 0), 'set')}`}
               </div>
-            </div>
+            </button>
             <button className="btn-plain" aria-label={`Move ${day.name} up`} disabled={i === 0}
               onClick={() => dispatch({ type: 'moveDay', programId: program.id, dayId: day.id, delta: -1 })}>↑</button>
             <button className="btn-plain" aria-label={`Move ${day.name} down`} disabled={i === program.days.length - 1}
@@ -115,7 +125,7 @@ const SplitsSheet = ({ onClose }: { onClose: () => void }) => {
           <div key={p.id} className="row-item" style={{ marginBottom: 0 }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 650 }}>{p.name}</div>
-              <div className="t-caption label-2">{p.days.length} days{p.id === activeProgramId && ' · active'}</div>
+              <div className="t-caption label-2">{plural(p.days.length, 'day')}{p.id === activeProgramId && ' · active'}</div>
             </div>
             {p.id !== activeProgramId && (
               <button className="btn-plain"
@@ -213,11 +223,12 @@ const TemplateEditor = ({
 
       <div className="stack" style={{ marginTop: 4 }}>
         {stepRow('Sets', template.sets, (v) => patch({ sets: v }))}
-        {stepRow('Rep cap', template.repCap, (v) => patch({ repCap: Math.max(template.repHigh, v) }))}
         {stepRow('Reps from', template.repLow, (v) =>
           patch({ repLow: v, repHigh: Math.max(v, template.repHigh) }))}
         {stepRow('Reps to', template.repHigh, (v) =>
           patch({ repHigh: Math.max(template.repLow, v) }))}
+        {/* After the range, since it is the ceiling that range may reach. */}
+        {stepRow('Rep cap', template.repCap, (v) => patch({ repCap: Math.max(template.repHigh, v) }))}
         {stepRow('Rest', template.restSec, (v) => patch({ restSec: v }), 15, 0)}
         <input
           value={template.notes} placeholder="Cue"
@@ -225,11 +236,15 @@ const TemplateEditor = ({
           onChange={(e) => patch({ notes: e.target.value })}
         />
 
-        <WarmupEditor
-          warmups={template.warmups}
-          onChange={(warmups) => patch({ warmups })}
-          name={name}
-        />
+        {/* Only the first exercise of a day gets warm-up rows, so this is the
+            only exercise where editing them would change anything. */}
+        {index === 0 && (
+          <WarmupEditor
+            warmups={template.warmups}
+            onChange={(warmups) => patch({ warmups })}
+            name={name}
+          />
+        )}
       </div>
     </section>
   )

@@ -6,6 +6,7 @@ import { chime } from '../lib/audio'
 import { notifyRestOver } from '../lib/notify'
 import { useWakeLock } from '../lib/wakeLock'
 import { navigate, useRoute } from '../lib/router'
+import { haptic } from '../lib/haptics'
 
 /**
  * The global rest timer bar. Lives in the App shell, so it survives every
@@ -39,7 +40,7 @@ export const RestBar = () => {
       firedFor.current = rest.endsAt
       chime()
       notifyRestOver(rest.exerciseName)
-      navigator.vibrate?.([180, 90, 180])
+      haptic('alert')
     }
   }, [rest, now])
 

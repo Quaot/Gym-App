@@ -1,7 +1,7 @@
 export type ID = string
 export type Unit = 'kg' | 'lb'
 
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 /**
  * Catalog entry — the stable identity of a movement. Templates and logged
@@ -126,10 +126,14 @@ export interface Settings {
   weightStep: number
   /** Audible detent ticks on the tape input. */
   tickSound: boolean
+  /** Feedback you can feel: wheel detents, a set logged, the timer ending. */
+  haptics: boolean
   /** Your bodyweight, used to size jumps on bodyweight movements. */
   bodyweight: number
   /** The bar you load, so the app can tell you which plates to hang on it. */
   barWeight: number
+  /** Whether the welcome has been seen, so it appears exactly once. */
+  seenWelcome: boolean
 }
 
 export interface AppState {

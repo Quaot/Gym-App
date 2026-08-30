@@ -1,7 +1,9 @@
-import type { AppState, DayTemplate, Program, Unit } from '../types'
+import type { AppState, DayTemplate, Program, Unit, WarmupStep } from '../types'
 import { decodeAppState } from './decode'
 import { resolveExercise } from '../lib/catalog'
-import { pplProgram, presetCatalog, presetTemplateMeta, setPresetUnit } from '../lib/presets'
+import {
+  pplProgram, pplulProgram, presetCatalog, presetTemplateMeta, setPresetUnit,
+} from '../lib/presets'
 import { uid } from '../lib/util'
 
 export const V1_KEY = 'gym-app:state:v1'
@@ -202,6 +204,64 @@ export const migrateV3 = (raw: unknown): AppState => {
   })
 
   return { ...state, catalog, programs }
+}
+
+/* ------------------------------------------------------------------ *
+ * v4 -> v5: the warm-up rule reaches programs that already existed.
+ * ------------------------------------------------------------------ */
+
+/** True when a stored day still holds the preset's movements, in its order. */
+const sameMovements = (mine: DayTemplate, theirs: DayTemplate): boolean =>
+  mine.exercises.length === theirs.exercises.length &&
+  mine.exercises.every((t, i) => t.exerciseId === theirs.exercises[i].exerciseId)
+
+/** The preset day a stored day still is, or null once you have edited it. */
+const presetDayFor = (presets: Program[], day: DayTemplate): DayTemplate | null => {
+  for (const p of presets) {
+    const want = p.days.find((d) => d.name === day.name)
+    if (want && sameMovements(day, want)) return want
+  }
+  return null
+}
+
+const sameWarmups = (a: WarmupStep[], b: WarmupStep[]): boolean =>
+  a.length === b.length && a.every((w, i) => w.pct === b[i].pct && w.reps === b[i].reps)
+
+/**
+ * Applies today's warm-up prescription to a program that predates it.
+ *
+ * The rule: the first exercise of a day gets a four step ramp at 50, 70, 85
+ * and 90 percent of the weight you are about to lift, and only when it loads
+ * a barbell. Nothing else in the day gets warm-up rows.
+ *
+ * The preset has said that since the policy changed, but a program built
+ * before it kept whatever the old per-role schemes handed out, and migrateV2
+ * fills warm-ups only where they are empty, so nothing ever took them away.
+ * This does, for any day still shaped exactly the way a preset shipped it.
+ * A day you have edited is yours, and is left alone, warm-ups and all.
+ *
+ * Idempotent: a day already carrying the preset's warm-ups is returned as is.
+ */
+export const migrateV4 = (raw: unknown): AppState => {
+  const state = decodeV2(raw)
+  const presets = [pplProgram(), pplulProgram()]
+
+  const programs = state.programs.map((p) => ({
+    ...p,
+    days: p.days.map((d) => {
+      const want = presetDayFor(presets, d)
+      if (!want) return d
+      return {
+        ...d,
+        exercises: d.exercises.map((t, i) =>
+          sameWarmups(t.warmups, want.exercises[i].warmups)
+            ? t
+            : { ...t, warmups: want.exercises[i].warmups }),
+      }
+    }),
+  }))
+
+  return { ...state, programs }
 }
 
 export const freshState = (): AppState => {

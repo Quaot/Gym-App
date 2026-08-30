@@ -465,6 +465,32 @@ body[data-tape-drag] .scroller { overflow: hidden !important; }
   font-weight: 700;
   letter-spacing: -0.012em;
 }
+/* What a screen is for, one tap away instead of a paragraph in the way. */
+.title-help {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  margin-left: 9px;
+  border: none;
+  border-radius: 50%;
+  vertical-align: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-family: var(--font-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
+}
+.title-help:active { transform: scale(0.9); }
+.help-sheet p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  color: var(--label-2);
+}
+.help-sheet p:first-child { color: var(--label); font-size: 17px; line-height: 23px; }
 .large-title .sub {
   color: var(--label-2);
   font-size: 15px;
@@ -828,12 +854,24 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 .ex-card { padding: 14px var(--pad) 10px; }
 .ex-head { display: flex; align-items: center; gap: 8px; }
 .ex-name {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+  color: inherit;
   flex: 1;
   min-width: 0;
   font-family: var(--font-serif);
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.012em;
+}
+/* A long name gives way to the hint, since the hint is the way in. */
+.ex-name-text {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -897,6 +935,131 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
 }
 .set-editor .complete { margin-top: 14px; }
 
+.welcome p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  color: var(--label-2);
+}
+.welcome p:first-child { color: var(--label); font-size: 17px; line-height: 23px; }
+
+/* Where you are, and what the next block of rows is. The options button sits
+ * up here rather than beside the name, which is the line that runs out of
+ * room first on a narrow phone. */
+.ex-step {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+.ex-menu { padding: 0 2px; margin: -4px -2px; }
+.set-group {
+  font-size: 13px;
+  letter-spacing: 0;
+  color: var(--label-2);
+  margin: 10px 2px 4px;
+}
+
+/* A row whose body opens it. Left aligned and flush, so it reads as the row
+   rather than as a button sitting inside one. */
+.row-open {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+}
+.row-open:active { opacity: 0.55; }
+
+/* Anything carrying more than it shows: press it, or tap the mark. */
+.holdable { display: inline-flex; align-items: center; gap: 5px; }
+.holdable::after {
+  content: 'i';
+  flex: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--fill-3);
+  color: var(--label-3);
+  font-family: var(--font-text);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+  text-align: center;
+}
+.info-wrap:active .holdable::after { background: var(--accent-soft); color: var(--accent); }
+
+/* The guide: prose, so it gets prose measure and spacing. */
+.guide-intro { margin: 0 4px 18px; }
+.guide-entry { display: block; padding: 14px var(--pad); }
+.guide-q {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  margin-bottom: 4px;
+}
+.guide-a {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 5px;
+}
+.guide-a li {
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  color: var(--label-2);
+}
+
+/* The name is a question you can ask: how do I do this one. */
+.how-hint {
+  flex: none;
+  width: 19px;
+  height: 19px;
+  border-radius: 50%;
+  background: var(--fill-3);
+  color: var(--label-2);
+  font-family: var(--font-text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 19px;
+  text-align: center;
+}
+.ex-name:active .how-hint { background: var(--accent-soft); color: var(--accent); }
+
+.howto { display: grid; gap: 14px; }
+.howto-part p {
+  margin: 2px 0 0;
+  font-size: 15px;
+  line-height: 21px;
+  letter-spacing: -0.01em;
+  color: var(--label);
+}
+.howto-label {
+  font-size: 13px;
+  letter-spacing: 0;
+  font-weight: 600;
+  color: var(--accent);
+}
+.howto-part.warn .howto-label { color: var(--orange); }
+
+/* One tap writes every set this screen was already suggesting in grey. */
+/* One quiet way to write the whole workout at once. It is a text button, not
+   a slab, because a suggestion should be available rather than insistent. */
+.fill-session {
+  display: block;
+  margin: 2px auto 10px;
+  padding: 6px 10px;
+  font-size: 15px;
+  color: var(--accent);
+}
+
+/* Two taps on a card fill it, and iOS must not read that as a zoom. */
+.ex-card { touch-action: manipulation; }
 /* What to hang on the bar: the one sum you should never have to do tired. */
 .plates-block { margin: 6px 0 2px; }
 .plate-bar { display: block; margin: 0 auto 2px; max-width: 260px; }
@@ -1205,6 +1368,7 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
  *  Info popover, the show-do-not-tell affordance
  * ---------------------------------------------------------------- */
 .info-wrap { position: relative; display: inline-flex; align-items: center; }
+.info-pop.below { bottom: auto; top: calc(100% + 6px); }
 .info-pop {
   position: absolute;
   left: 0;
@@ -1217,7 +1381,6 @@ select:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
   background: rgba(58, 58, 60, 0.72);
   backdrop-filter: var(--glass-blur);
   -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-shadow), inset 0 0.5px 0 var(--glass-rim);
   color: var(--label);
   font-size: 13px;
   line-height: 18px;

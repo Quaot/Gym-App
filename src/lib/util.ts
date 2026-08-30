@@ -44,8 +44,28 @@ export const fmtDate = (ts: number) => {
   return d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
 }
 
-export const daysAgo = (ts: number) =>
-  Math.floor((Date.now() - ts) / 86400000)
+/**
+ * Whole days between two calendar dates, not elapsed hours divided by 24.
+ *
+ * A session finished at 8pm yesterday and read at 9am today is thirteen
+ * hours old, which the old arithmetic called "0d ago". People count nights,
+ * not hours, so this counts midnights.
+ */
+export const daysAgo = (ts: number, now: number = Date.now()) => {
+  const a = new Date(ts)
+  a.setHours(0, 0, 0, 0)
+  const b = new Date(now)
+  b.setHours(0, 0, 0, 0)
+  return Math.round((b.getTime() - a.getTime()) / 86400000)
+}
+
+/** The word only: "set" or "sets". */
+export const pluralize = (n: number, one: string, many = `${one}s`): string =>
+  (n === 1 ? one : many)
+
+/** The whole phrase: "1 set", "3 sets". */
+export const plural = (n: number, one: string, many = `${one}s`): string =>
+  `${n} ${pluralize(n, one, many)}`
 
 /** Reorders an array immutably, moving `from` to `to`. */
 export const move = <T,>(arr: T[], from: number, to: number): T[] => {
