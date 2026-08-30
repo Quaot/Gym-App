@@ -1430,6 +1430,156 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 }
 
 /* ================================================================== *
+ * 30. The workout carries you from one exercise into the next
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.ex-card')
+
+  // Push 1 opens on a single heavy top set, so one press finishes exercise 1.
+  // That press used to close the editor and open nothing anywhere.
+  await page.locator('.complete').first().click()
+  await page.waitForTimeout(400)
+  const openIn = await page.locator('.ex-card').evaluateAll(
+    (cards) => cards.findIndex((c) => c.querySelector('.set-editor')))
+  assert(openIn === 1, '30a. finishing an exercise opens the next one, not nothing',
+    `editor is in card ${openIn}`)
+
+  // Run the rest of the workout through without touching a collapsed row.
+  let pressed = 1
+  for (let i = 0; i < 40; i++) {
+    const btn = page.locator('.complete')
+    if (await btn.count() === 0) break
+    await btn.first().scrollIntoViewIfNeeded()
+    await btn.first().click()
+    await page.waitForTimeout(160)
+    pressed++
+  }
+  await flushStorage(page)
+  const state = await readState(page)
+  const live = state.sessions.find((s) => s.id === state.core.activeSessionId)
+  const total = live.exercises.reduce((n, e) => n + e.sets.length, 0)
+  const done = live.exercises.reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0)
+  assert(done === total, '30b. and keeps going to the end of the workout',
+    `${done} of ${total} logged in ${pressed} presses`)
+  assert(await page.locator('.set-editor').count() === 0,
+    '30c. with nothing left open once every set is logged')
+  assert(errors.length === 0, '30. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 31. Switching units converts, and says so before it does
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Add sample data' }).click()
+  await page.waitForTimeout(500)
+  await flushStorage(page)
+
+  const before = await readState(page)
+  const weights = (s) => s.sessions.flatMap((x) => x.exercises)
+    .flatMap((e) => e.sets).map((x) => x.weight).filter((w) => w !== null)
+  const wasLb = weights(before)
+  assert(wasLb.length > 20, '31a. there is a history worth converting', `${wasLb.length} weights`)
+
+  // Choosing a unit asks first: this rewrites every number you have logged.
+  await page.locator('select').first().selectOption('kg')
+  await page.waitForSelector('.sheet')
+  const asks = await page.locator('.sheet').innerText()
+  assert(/logged/.test(asks), '31b. it says how much it would change', asks.split('\n')[1] ?? '')
+  await page.getByRole('button', { name: 'Convert everything' }).click()
+  await page.waitForTimeout(500)
+  await flushStorage(page)
+
+  const after = await readState(page)
+  const nowKg = weights(after)
+  assert(after.core.settings.unit === 'kg', '31c. the unit changed')
+  const unchanged = nowKg.filter((w, i) => w === wasLb[i]).length
+  assert(unchanged < nowKg.length / 2, '31d. and the weights changed with it, rather than being relabelled',
+    `${unchanged} of ${nowKg.length} identical`)
+  const ratio = nowKg[0] / wasLb[0]
+  assert(ratio > 0.4 && ratio < 0.5, '31e. by roughly the right factor',
+    `${wasLb[0]} lb became ${nowKg[0]} kg`)
+  assert(after.core.settings.barWeight === 20,
+    '31f. and the bar is the one that unit uses', `${after.core.settings.barWeight}`)
+
+  // Relabelling stays available, since it is what you want after a mistake.
+  await page.locator('select').first().selectOption('lb')
+  await page.waitForSelector('.sheet')
+  await page.getByRole('button', { name: 'Relabel without converting' }).click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const relabelled = await readState(page)
+  assert(weights(relabelled)[0] === nowKg[0],
+    '31g. relabelling leaves the numbers exactly where they were')
+
+  // Backing out has to leave the select showing what is actually stored.
+  await page.locator('select').first().selectOption('kg')
+  await page.waitForSelector('.sheet')
+  await page.getByRole('button', { name: 'Keep it as it is' }).click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const kept = await readState(page)
+  assert(kept.core.settings.unit === 'lb', '31h. backing out changes nothing', kept.core.settings.unit)
+  assert(await page.locator('select').first().inputValue() === 'lb',
+    '31i. and the control snaps back to the unit you are actually on')
+  assert(errors.length === 0, '31. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 32. Controls that used to fight the thing next to them
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.waitForTimeout(300)
+
+  // Reading the haptics explanation used to toggle haptics, because the
+  // popover sat inside the label that owns the switch.
+  const row = page.locator('.switch-row').filter({ hasText: 'Haptics' })
+  const was = await row.locator('input.switch').isChecked()
+  await row.locator('.info-wrap').click()
+  await page.waitForTimeout(300)
+  assert(await page.locator('.info-pop').count() === 1, '32a. the haptics explanation opens')
+  assert(await row.locator('input.switch').isChecked() === was,
+    '32b. and reading it does not flip the switch')
+
+  // Bar weight was a hidden 45 with no way to change it.
+  const bar = page.locator('.row').filter({ hasText: 'Bar weight' })
+  assert(await bar.count() === 1, '32c. the bar you load is a setting you can see')
+  await bar.getByRole('button', { name: 'Raise bar weight' }).click()
+  await page.waitForTimeout(200)
+  await flushStorage(page)
+  assert((await readState(page)).core.settings.barWeight === 47.5,
+    '32d. and one you can change')
+
+  // A day row on Program was dead except for a small Edit button.
+  await page.locator('.tabbar').getByRole('button', { name: 'Program' }).click()
+  await page.waitForTimeout(300)
+  await page.locator('.row-open').first().click()
+  await page.waitForTimeout(500)
+  assert(page.url().includes('/program/'), '32e. tapping a day name opens the day', page.url())
+  assert(errors.length === 0, '32. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
  * 13–14. Small-screen render + screenshots, zero console errors
  * ================================================================== */
 {

@@ -327,9 +327,21 @@ const ExerciseCard = ({
     ? `${targetSets} × ${exercise.repLow}`
     : `${targetSets} × ${exercise.repLow}-${exercise.repHigh}`
 
+  /**
+   * Opens whatever you should do next, which is not always in this exercise.
+   *
+   * Completing the last set of a card used to close the editor and open
+   * nothing, so a workout dead ended on every exercise and you had to find
+   * the next one and tap a row. It carries across the whole session now.
+   */
   const advance = (fromIndex: number) => {
     const next = exercise.sets.find((s, i) => i > fromIndex && !s.done)
-    setActiveSetId(next?.id ?? null)
+    if (next) return setActiveSetId(next.id)
+    const later = session.exercises
+      .slice(index + 1)
+      .flatMap((e) => e.sets)
+      .find((s) => !s.done)
+    setActiveSetId(later?.id ?? null)
   }
 
   const removeLastSet = () => {

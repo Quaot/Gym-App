@@ -61,14 +61,19 @@ export const ProgramScreen = () => {
         <div className="group">
         {program.days.map((day, i) => (
           <div key={day.id} className="row-item">
-            <div style={{ flex: 1, minWidth: 0 }}>
+            {/* The name is the biggest thing on the row, so it opens the day
+                rather than sitting there inert next to a small Edit. */}
+            <button
+              className="row-open"
+              onClick={() => navigate(`/program/${day.id}`)}
+            >
               <div className="name">{day.name}</div>
               <div className="t-footnote label-2">
                 {day.exercises.length === 0
                   ? 'Empty'
                   : `${day.exercises.length} exercises · ${day.exercises.reduce((n, e) => n + e.sets, 0)} sets`}
               </div>
-            </div>
+            </button>
             <button className="btn-plain" aria-label={`Move ${day.name} up`} disabled={i === 0}
               onClick={() => dispatch({ type: 'moveDay', programId: program.id, dayId: day.id, delta: -1 })}>↑</button>
             <button className="btn-plain" aria-label={`Move ${day.name} down`} disabled={i === program.days.length - 1}
