@@ -49,10 +49,10 @@ const newPage = async (viewport = { width: 390, height: 844 }) => {
 
 const readState = (page) =>
   page.evaluate(() => ({
-    core: JSON.parse(localStorage.getItem('gym:v4:core') ?? 'null'),
-    sessions: JSON.parse(localStorage.getItem('gym:v4:sessions') ?? '[]'),
-    sleep: JSON.parse(localStorage.getItem('gym:v4:sleep') ?? '[]'),
-    rest: JSON.parse(localStorage.getItem('gym:v4:rest') ?? 'null'),
+    core: JSON.parse(localStorage.getItem('gym:v5:core') ?? 'null'),
+    sessions: JSON.parse(localStorage.getItem('gym:v5:sessions') ?? '[]'),
+    sleep: JSON.parse(localStorage.getItem('gym:v5:sleep') ?? '[]'),
+    rest: JSON.parse(localStorage.getItem('gym:v5:rest') ?? 'null'),
   }))
 
 const flushStorage = (page) =>
@@ -77,6 +77,16 @@ const clearBars = async (page, target) => {
     if (below > 0) scroller.scrollTop += below
   })
   await page.waitForTimeout(200)
+}
+
+/** Waits for the app, and clears the first run welcome if it is showing. */
+const ready = async (page) => {
+  await page.waitForSelector('.group, .sheet-backdrop')
+  if (await page.locator('.sheet-backdrop').count()) {
+    await page.locator('.sheet').getByRole('button', { name: 'Start', exact: true }).click()
+    await page.waitForSelector('.sheet-backdrop', { state: 'detached' })
+  }
+  await page.waitForSelector('.group')
 }
 
 const dragTape = async (page, tape, px) => {
@@ -125,11 +135,11 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     localStorage.setItem('gym-app:state:v1', raw)
   }, v1Fixture)
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   const v1 = JSON.parse(v1Fixture)
   const state = await readState(page)
-  assert(state.core?.version === 4, '1. v1 blob migrates all the way to the v4 keys')
+  assert(state.core?.version === 5, '1. v1 blob migrates all the way to the v5 keys')
   assert(
     await page.evaluate(() => localStorage.getItem('gym-app:state:v1')) === null,
     '1. old key removed after migration',
@@ -160,21 +170,21 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     // time of a *valid* envelope: decode repairs this, so instead poison the
     // renderer path via an unparsable core that forces the fresh-state path…
     // …which never throws. So simulate the true worst case: a render crash.
-    localStorage.setItem('gym:v4:core', '{"version":4') // truncated JSON
+    localStorage.setItem('gym:v5:core', '{"version":5') // truncated JSON
   })
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   assert(true, '2a. truncated storage boots clean via decoder (no white screen)')
 
   // Force a genuine render crash to exercise the ErrorBoundary itself.
   await page.evaluate(() => {
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'x', startedAt: 1, finishedAt: 2, dayName: 'D', dayNotes: '', notes: '',
       exercises: [], programId: null, dayId: null,
     }]))
   })
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   const crashed = await page.evaluate(() => {
     try {
       window.dispatchEvent(new Event('__nonexistent'))
@@ -195,7 +205,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   await page.getByRole('button', { name: 'Start', exact: true }).first().click()
   await page.waitForSelector('.set-editor')
@@ -294,7 +304,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.waitForSelector('.ex-card')
   await page.getByRole('button', { name: 'Finish' }).click()
   await page.getByRole('button', { name: 'Save workout' }).click()
-  await page.waitForSelector('.group')
+  await ready(page)
   await flushStorage(page)
   const done = await readState(page)
   const finished = done.sessions.find((s) => s.finishedAt !== null)
@@ -316,7 +326,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   await flushStorage(page)
   const before = await readState(page)
@@ -348,7 +358,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   await page.locator('.tabbar').getByRole('button', { name: 'Program' }).click()
   await page.getByRole('button', { name: 'Splits' }).click()
@@ -361,7 +371,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   assert(pplul && pplul.days.length === 5, '8b. PPLUL has 5 days')
   assert(state.core.activeProgramId === pplul.id, '8c. new split becomes active')
   await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
-  await page.waitForSelector('.group')
+  await ready(page)
   const todayText = await page.locator('.main').innerText()
   const missing = ['Push', 'Pull', 'Legs', 'Upper', 'Lower'].filter((n) => !todayText.includes(n))
   assert(missing.length === 0, '8d. Today shows the 5 PPLUL days', `missing ${missing.join(',')}`)
@@ -382,7 +392,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   // Fresh boot first so the core slice exists, then seed history alongside it.
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   await page.evaluate(() => {
     const sessions = []
     const now = Date.now()
@@ -402,10 +412,10 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
         }],
       })
     }
-    localStorage.setItem('gym:v4:sessions', JSON.stringify(sessions))
+    localStorage.setItem('gym:v5:sessions', JSON.stringify(sessions))
   })
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   await page.locator('.tabbar').getByRole('button', { name: 'Progress' }).click()
   await page.waitForSelector('.chart-card')
@@ -466,7 +476,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   const h0 = await page.evaluate(() => history.length)
   for (const tab of ['Program', 'Progress', 'History', 'Settings', 'Today']) {
@@ -496,9 +506,9 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   await page.evaluate(() => {
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'orphan1', programId: null, dayId: null, dayName: 'Push 1', dayNotes: '', notes: '',
       startedAt: Date.now() - 86400000, finishedAt: null,
       exercises: [{
@@ -512,7 +522,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     }]))
   })
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   assert(await page.getByText(/never finished/).first().isVisible(), '12a. orphan surfaces on Home')
   await page.locator('.metric', { hasText: 'never finished' }).click()
   await page.getByRole('button', { name: 'Resume', exact: true }).click()
@@ -543,14 +553,14 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   // Seed one topped bench session so the engine has a weight to plan from.
   await page.evaluate(() => {
-    const core = JSON.parse(localStorage.getItem('gym:v4:core'))
+    const core = JSON.parse(localStorage.getItem('gym:v5:core'))
     const day = core.programs[0].days[0]
     const t = Date.now() - 3 * 86400000
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'seed', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
       dayNotes: day.notes, startedAt: t - 3600000, finishedAt: t, notes: '',
       exercises: [{
@@ -561,7 +571,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     }]))
   })
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   // Start Push 1 specifically, since the seeded session moves "up next" along.
   await page.locator('.row-item').filter({ hasText: 'Push 1' }).first().click()
   await page.waitForSelector('.set-editor')
@@ -601,7 +611,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   await page.getByRole('button', { name: 'Start', exact: true }).first().click()
   await page.waitForSelector('.set-editor')
 
@@ -634,7 +644,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
   await page.getByRole('button', { name: 'Add sample data' }).click()
@@ -670,10 +680,16 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   const offenders = []
   const periods = []
+  const plurals = []
+  // "1 sets" and "1 exercises" were on screen in nine places. These are the
+  // nouns the app actually counts, so the check cannot fire on prose.
+  // The number and its unit are separate elements, so innerText runs them
+  // together as "1sets": the space has to be optional or this never fires.
+  const COUNTED = /\b1\s*(sets|reps|exercises|workouts|sessions|days|nights|weeks|records|splits|programs)\b/
   for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
     await page.locator('.tabbar').getByRole('button', { name: tab }).click()
     await page.waitForTimeout(250)
@@ -682,6 +698,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
       if (/[—–]/.test(line) || / - /.test(line)) offenders.push(`${tab}: ${line}`)
       // House rule: nothing on screen closes with a period.
       if (/[a-z0-9)\]]\.$/.test(line.trim())) periods.push(`${tab}: ${line}`)
+      if (COUNTED.test(line)) plurals.push(`${tab}: ${line}`)
     }
   }
   // The workout screen carries the day notes, so it gets scanned too.
@@ -693,10 +710,24 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   for (const line of sessionText.split('\n')) {
     if (/[—–]/.test(line) || / - /.test(line)) offenders.push(`Workout: ${line}`)
     if (/[a-z0-9)\]]\.$/.test(line.trim())) periods.push(`Workout: ${line}`)
+    if (COUNTED.test(line)) plurals.push(`Workout: ${line}`)
+  }
+
+  // Counts of one are where the copy broke, so put the app in that state and
+  // read every screen again: one set logged, on one unfinished workout.
+  await page.locator('.complete').first().click()
+  await page.waitForTimeout(300)
+  for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
+    await page.locator('.tabbar').getByRole('button', { name: tab }).click()
+    await page.waitForTimeout(250)
+    for (const line of (await page.locator('body').innerText()).split('\n')) {
+      if (COUNTED.test(line)) plurals.push(`${tab} with one of everything: ${line}`)
+    }
   }
 
   assert(offenders.length === 0, '18a. rendered copy carries no dashes', offenders.join(' | '))
   assert(periods.length === 0, '18b. rendered copy closes no line with a period', periods.join(' | '))
+  assert(plurals.length === 0, '18c. and never says "1 sets"', plurals.join(' | '))
   await ctx.close()
 }
 
@@ -708,7 +739,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   // A page that scrolls inside itself: the document never moves.
   await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
@@ -786,7 +817,9 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     await page.evaluate(() => location.hash),
   )
 
-  // A swipe released early stays put.
+  // A swipe released early stays put. Deliberately slow: a fast flick is
+  // supposed to carry (see swipeCommits), so the pace has to stay well under
+  // SWIPE_SPEED or this is testing the velocity rule rather than the distance.
   await page.locator('.row-item').first().click()
   await page.waitForTimeout(500)
   const deep = await page.evaluate(() => location.hash)
@@ -794,13 +827,14 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.mouse.down()
   for (let i = 1; i <= 5; i++) {
     await page.mouse.move(4 + i * 6, 500)
-    await page.waitForTimeout(8)
+    await page.waitForTimeout(40)
   }
   await page.mouse.up()
   await page.waitForTimeout(500)
   assert(
     await page.evaluate(() => location.hash) === deep,
     '19k. a short swipe springs back and stays',
+    `${await page.evaluate(() => location.hash)} vs ${deep}`,
   )
 
   // A workout rises from the bottom instead of sliding sideways.
@@ -850,7 +884,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   await page.locator('.tabbar').getByRole('button', { name: 'Program' }).click()
   await page.waitForTimeout(300)
@@ -886,14 +920,14 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   // Seed a bench session so today can beat it.
   await page.evaluate(() => {
-    const core = JSON.parse(localStorage.getItem('gym:v4:core'))
+    const core = JSON.parse(localStorage.getItem('gym:v5:core'))
     const day = core.programs[0].days[0]
     const t = Date.now() - 3 * 86400000
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'past', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
       dayNotes: '', startedAt: t - 3600000, finishedAt: t, notes: '',
       exercises: [{
@@ -904,7 +938,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     }]))
   })
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   await page.locator('.row-item', { hasText: 'Push 1' }).first().click()
   await page.waitForSelector('.set-editor')
 
@@ -994,7 +1028,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
 
   // 22a. The bar is drawn with the plates that make the weight.
   await page.getByRole('button', { name: 'Start', exact: true }).first().click()
@@ -1066,6 +1100,511 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 }
 
 /* ================================================================== *
+ * 23. A first launch explains itself, once
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.sheet-backdrop')
+
+  const title = await page.locator('.sheet-head h2').innerText()
+  assert(title === 'Read this first', '23a. a first launch opens on the welcome', title)
+  const lines = await page.locator('.welcome p').count()
+  assert(lines >= 4, '23b. it says what the app does with your numbers', `${lines} paragraphs`)
+
+  await page.locator('.sheet').getByRole('button', { name: 'Start', exact: true }).click()
+  await page.waitForSelector('.group')
+  assert(await page.locator('.sheet-backdrop').count() === 0, '23c. Start puts it away')
+  await flushStorage(page)
+  const seen = await readState(page)
+  assert(seen.core.settings.seenWelcome === true, '23d. and the app remembers you have read it')
+
+  await page.reload()
+  await page.waitForSelector('.group')
+  await page.waitForTimeout(250)
+  assert(await page.locator('.sheet-backdrop').count() === 0, '23e. it never comes back')
+
+  // The other door out of the welcome lands on the guide, not on Today.
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await page.waitForSelector('.sheet-backdrop')
+  await page.getByRole('button', { name: 'Show me how it works' }).click()
+  await page.waitForSelector('.guide-entry')
+  assert(page.url().includes('/settings/guide'), '23f. and the other button opens the guide', page.url())
+  assert(errors.length === 0, '23. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 24. Filling is something you ask for, never something you are offered
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+
+  // Sample data is the quickest honest history for a fill to read.
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Add sample data' }).click()
+  await page.waitForTimeout(400)
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(250)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.ex-card')
+
+  assert(await page.locator('.ex-card .fill-all').count() === 0,
+    '24a. no exercise pushes a fill button at you')
+  const cards = await page.locator('.ex-card').count()
+  const all = page.locator('.fill-session')
+  assert(await all.count() === 1, '24b. the workout carries exactly one way to fill everything')
+  const allLabel = await all.innerText()
+  assert(/^Fill all \d+ sets$/.test(allLabel), '24c. which says how much it would write', allLabel)
+
+  // Two taps on the quiet part of a card fill that exercise and no other.
+  await page.locator('.ex-card').first().locator('.last-line').dblclick()
+  await page.waitForTimeout(300)
+  await flushStorage(page)
+  const filled = await readState(page)
+  const live = filled.sessions.find((s) => s.id === filled.core.activeSessionId)
+  const first = live.exercises[0]
+  assert(first.sets.every((s) => s.reps !== null), '24d. two taps fill every set of that exercise',
+    `${first.sets.filter((s) => s.reps !== null).length}/${first.sets.length}`)
+  assert(first.sets.every((s) => s.weight !== null),
+    '24e. warm-ups included, since they are the risky ones')
+  assert(first.sets.every((s) => !s.done), '24f. filling is not logging: nothing is completed')
+  const untouched = live.exercises[1]
+  assert(untouched.sets.every((s) => s.reps === null),
+    '24g. and it leaves every other exercise alone')
+
+  // The rep range describes the working sets, so the pill must count those.
+  const pill = await page.locator('.ex-card').first().locator('.pill.num').innerText()
+  const working = first.sets.filter((s) => !s.warmup).length
+  assert(Number(pill.match(/^\d+/)[0]) === working,
+    '24h. the target pill counts working sets, not the warm-up ramp',
+    `${pill} with ${working} working of ${first.sets.length}`)
+
+  // The menu is the discoverable version of the gesture, and explains itself.
+  await page.locator('.ex-card').nth(1).locator('.ex-menu').click()
+  await page.waitForSelector('.sheet')
+  const menu = await page.locator('.sheet').innerText()
+  assert(/Fill \d+ sets? (from last time|to start)/.test(menu),
+    '24i. the exercise menu offers the same fill', menu.split('\n').slice(0, 3).join(' / '))
+  assert(/Two taps on the exercise/.test(menu), '24j. and teaches the gesture')
+  await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+  await page.waitForSelector('.sheet-backdrop', { state: 'detached' })
+
+  // Fill all finishes the job, then stops offering.
+  await all.click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const done = await readState(page)
+  const session = done.sessions.find((s) => s.id === done.core.activeSessionId)
+  const empty = session.exercises.filter((e) => e.sets.some((x) => x.reps === null))
+  assert(empty.length === 0, '24k. Fill all writes every exercise in the workout',
+    `${empty.length} of ${cards} left empty`)
+  assert(await page.locator('.fill-session').count() === 0,
+    '24l. and goes away once there is nothing left to write')
+  assert(errors.length === 0, '24. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 25. Every movement can explain itself, and admits when it cannot
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.ex-card')
+
+  const name = await page.locator('.ex-name').first().innerText()
+  await page.locator('.ex-name').first().click()
+  await page.waitForSelector('.howto')
+  const heading = await page.locator('.sheet-head h2').innerText()
+  assert(heading.startsWith(name.replace(/\s*\?$/, '')), '25a. the sheet is about the lift you tapped',
+    `${heading} vs ${name}`)
+  const labels = await page.locator('.howto-label').allInnerTexts()
+  for (const part of ['Set up', 'The rep', 'Do not', 'Why it is here']) {
+    assert(labels.includes(part), `25b. it covers ${part.toLowerCase()}`, labels.join(', '))
+  }
+  // The day's own cue rides along at the end and is deliberately short, so
+  // the length rule applies to the four researched parts.
+  const bodies = await page.locator('.howto-part').evaluateAll((nodes) =>
+    nodes
+      .filter((n) => n.querySelector('.howto-label')?.textContent !== 'On this day')
+      .map((n) => n.querySelector('p')?.textContent ?? ''))
+  const thin = bodies.filter((t) => t.trim().length < 40)
+  assert(thin.length === 0, '25c. every part is a real instruction, not a stub', thin.join(' | '))
+
+  // Pressing the close button is the obvious way out, so it has to work.
+  await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+  await page.waitForSelector('.sheet-backdrop', { state: 'detached' })
+  ok('25f. the close button on a sheet actually closes it')
+
+  // A movement you invented has nothing written about it, and says so.
+  const mine = 'Sandbag Carry'
+  await page.getByRole('button', { name: '+ Add exercise' }).click()
+  await page.waitForSelector('.sheet input')
+  await page.locator('.sheet input').fill(mine)
+  await page.getByRole('button', { name: `Add "${mine}"` }).click()
+  await page.waitForTimeout(300)
+  const added = page.locator('.ex-card').filter({ hasText: mine }).first()
+  await added.locator('.ex-name').click()
+  await page.waitForSelector('.sheet-backdrop')
+  const fallback = await page.locator('.sheet').innerText()
+  assert(/added this one yourself/.test(fallback), '25d. an exercise you added says so instead of going blank',
+    fallback.replace(/\n/g, ' ').slice(0, 80))
+  assert(await page.locator('.howto-part').count() === 0, '25e. and does not invent instructions for it')
+  assert(errors.length === 0, '25. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 26. The guide is reachable, complete, and leaves cleanly
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: /How this works/ }).click()
+  await page.waitForSelector('.guide-entry')
+  const guide = page.locator('.screen-inner[data-screen="settings/guide"]')
+  const sections = await guide.locator('.section-header').count()
+  const entries = await guide.locator('.guide-entry').count()
+  assert(sections >= 5, '26a. the guide covers the app in sections', `${sections} sections`)
+  assert(entries >= 15, '26b. and answers a question in each', `${entries} entries`)
+  const empty = await guide.locator('.guide-entry').evaluateAll(
+    (nodes) => nodes.filter((n) => !n.querySelector('.guide-a li')).length,
+  )
+  assert(empty === 0, '26c. no question is left unanswered', `${empty} empty`)
+
+  // The guide is copy too, so it obeys the same two house rules.
+  const guideText = await guide.innerText()
+  const badDash = guideText.split('\n').filter((l) => /[—–]/.test(l) || / - /.test(l))
+  const badStop = guideText.split('\n').filter((l) => /[a-z0-9)\]]\.$/.test(l.trim()))
+  assert(badDash.length === 0, '26d. no dashes in the guide', badDash.join(' | '))
+  assert(badStop.length === 0, '26e. and nothing ends on a period', badStop.join(' | '))
+
+  await page.screenshot({ path: `${SHOT_DIR}/e2e-guide.png`, fullPage: true })
+  await page.goBack()
+  await page.waitForTimeout(400)
+  assert(await page.getByRole('button', { name: /How this works/ }).count() === 1,
+    '26f. back returns to Settings')
+  assert(await page.locator('.tabbar').isVisible(), '26g. with the tab bar still there')
+  assert(errors.length === 0, '26. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 27. Every screen explains itself on request, and not before
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+
+  const badDash = []
+  const badStop = []
+  for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
+    await page.locator('.tabbar').getByRole('button', { name: tab }).click()
+    await page.waitForTimeout(250)
+    assert(await page.locator('.blurb').count() === 0,
+      `27a. ${tab} opens without a paragraph of explanation`)
+    const help = page.locator('.title-help')
+    assert(await help.count() === 1, `27b. ${tab} carries one way to ask what it is for`)
+
+    await help.click()
+    await page.waitForSelector('.help-sheet')
+    const text = await page.locator('.help-sheet').innerText()
+    assert(text.length > 80, `27c. ${tab} actually says something when asked`, text.slice(0, 60))
+    assert(await page.locator('.sheet').getByRole('button', { name: 'How this works' }).count() === 1,
+      `27d. ${tab} offers the full guide from its help`)
+    for (const line of text.split('\n')) {
+      if (/[—–]/.test(line) || / - /.test(line)) badDash.push(`${tab}: ${line}`)
+      if (/[a-z0-9)\]]\.$/.test(line.trim())) badStop.push(`${tab}: ${line}`)
+    }
+    await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+    await page.waitForSelector('.sheet-backdrop', { state: 'detached' })
+  }
+  // The prose moved into the sheets, so the house rules follow it there.
+  assert(badDash.length === 0, '27e. no dashes in any help sheet', badDash.join(' | '))
+  assert(badStop.length === 0, '27f. and nothing ends on a period', badStop.join(' | '))
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(200)
+  await page.locator('.title-help').click()
+  await page.waitForSelector('.help-sheet')
+  await page.getByRole('button', { name: 'How this works' }).click()
+  await page.waitForSelector('.guide-entry')
+  assert(page.url().includes('/settings/guide'), '27g. help leads into the guide', page.url())
+  assert(await page.locator('.sheet-backdrop').count() === 0,
+    '27h. and closes itself on the way, leaving no sheet behind')
+  assert(errors.length === 0, '27. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 28. The workout keeps its explanations behind a press
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  // Warm-up rows only exist once a working weight is known, so seed history.
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Add sample data' }).click()
+  await page.waitForTimeout(400)
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(250)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.ex-card')
+
+  const headings = await page.locator('.set-group').allInnerTexts()
+  const warm = headings.find((h) => h.startsWith('Warm-up'))
+  const work = headings.find((h) => h.startsWith('Working sets'))
+  assert(warm !== undefined && work !== undefined,
+    '28a. the ramp and the working sets are still named apart', headings.join(' | '))
+  for (const h of [warm, work]) {
+    assert(/·/.test(h) && h.length < 30,
+      '28b. each heading is a label, not a sentence', h)
+    assert(!/counted|reps$/.test(h), '28c. its explanation is no longer printed beside it', h)
+  }
+  assert(await page.locator('.fill-why').count() === 0,
+    '28d. and the fill button has no caption under it either')
+
+  const warmGroup = page.locator('.set-group').filter({ hasText: 'Warm-up' }).first()
+  // Settle the scroller first: the click would otherwise bring the row into
+  // view and read the popover while the page was still moving.
+  await warmGroup.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(500)
+  await warmGroup.locator('.info-wrap').click()
+  const popup = page.locator('.info-pop')
+  await popup.waitFor()
+  // Measure and read in one go: the popover dismisses itself on the next
+  // press or scroll, so a second round trip can find it already gone.
+  const shown = await popup.evaluate((el) => {
+    const box = el.getBoundingClientRect()
+    return { text: el.textContent ?? '', top: box.top, bottom: box.bottom }
+  })
+  assert(shown.text.length > 60, '28e. pressing the heading explains it', shown.text.slice(0, 60))
+  assert(/loads a barbell/.test(shown.text),
+    '28f. with the warm-up rule as the app states it everywhere', shown.text)
+
+  // A heading near the top of the screen must not explain itself off the top.
+  const view = page.viewportSize()
+  assert(shown.top >= 0 && shown.bottom <= view.height,
+    '28g. and the explanation lands on the screen, not off the top of it',
+    `${Math.round(shown.top)}..${Math.round(shown.bottom)} of ${view.height}`)
+
+  // The guide has to be telling the same story, in the same words.
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: /How this works/ }).click()
+  await page.waitForSelector('.guide-entry')
+  const guideText = await page.locator('.screen-inner[data-screen="settings/guide"]').innerText()
+  assert(/loads a barbell/.test(guideText), '28h. and so does the guide')
+  assert(errors.length === 0, '28. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 29. Feedback you can feel, and a switch to stop feeling it
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.waitForTimeout(250)
+  const row = page.locator('.switch-row').filter({ hasText: 'Haptics' })
+  assert(await row.count() === 1, '29a. haptics are a setting, not a fact of life')
+  const toggle = row.locator('input.switch')
+  assert(await toggle.isChecked(), '29b. and they are on until you say otherwise')
+
+  await toggle.click()
+  await page.waitForTimeout(200)
+  await flushStorage(page)
+  const off = await readState(page)
+  assert(off.core.settings.haptics === false, '29c. turning them off is remembered')
+
+  await page.reload()
+  await ready(page)
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.waitForTimeout(250)
+  assert(!(await page.locator('.switch-row').filter({ hasText: 'Haptics' })
+    .locator('input.switch').isChecked()), '29d. and survives a reload')
+  assert(errors.length === 0, '29. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 30. The workout carries you from one exercise into the next
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.ex-card')
+
+  // Push 1 opens on a single heavy top set, so one press finishes exercise 1.
+  // That press used to close the editor and open nothing anywhere.
+  await page.locator('.complete').first().click()
+  await page.waitForTimeout(400)
+  const openIn = await page.locator('.ex-card').evaluateAll(
+    (cards) => cards.findIndex((c) => c.querySelector('.set-editor')))
+  assert(openIn === 1, '30a. finishing an exercise opens the next one, not nothing',
+    `editor is in card ${openIn}`)
+
+  // Run the rest of the workout through without touching a collapsed row.
+  let pressed = 1
+  for (let i = 0; i < 40; i++) {
+    const btn = page.locator('.complete')
+    if (await btn.count() === 0) break
+    await btn.first().scrollIntoViewIfNeeded()
+    await btn.first().click()
+    await page.waitForTimeout(160)
+    pressed++
+  }
+  await flushStorage(page)
+  const state = await readState(page)
+  const live = state.sessions.find((s) => s.id === state.core.activeSessionId)
+  const total = live.exercises.reduce((n, e) => n + e.sets.length, 0)
+  const done = live.exercises.reduce((n, e) => n + e.sets.filter((x) => x.done).length, 0)
+  assert(done === total, '30b. and keeps going to the end of the workout',
+    `${done} of ${total} logged in ${pressed} presses`)
+  assert(await page.locator('.set-editor').count() === 0,
+    '30c. with nothing left open once every set is logged')
+  assert(errors.length === 0, '30. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 31. Switching units converts, and says so before it does
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Add sample data' }).click()
+  await page.waitForTimeout(500)
+  await flushStorage(page)
+
+  const before = await readState(page)
+  const weights = (s) => s.sessions.flatMap((x) => x.exercises)
+    .flatMap((e) => e.sets).map((x) => x.weight).filter((w) => w !== null)
+  const wasLb = weights(before)
+  assert(wasLb.length > 20, '31a. there is a history worth converting', `${wasLb.length} weights`)
+
+  // Choosing a unit asks first: this rewrites every number you have logged.
+  await page.locator('select').first().selectOption('kg')
+  await page.waitForSelector('.sheet')
+  const asks = await page.locator('.sheet').innerText()
+  assert(/logged/.test(asks), '31b. it says how much it would change', asks.split('\n')[1] ?? '')
+  await page.getByRole('button', { name: 'Convert everything' }).click()
+  await page.waitForTimeout(500)
+  await flushStorage(page)
+
+  const after = await readState(page)
+  const nowKg = weights(after)
+  assert(after.core.settings.unit === 'kg', '31c. the unit changed')
+  const unchanged = nowKg.filter((w, i) => w === wasLb[i]).length
+  assert(unchanged < nowKg.length / 2, '31d. and the weights changed with it, rather than being relabelled',
+    `${unchanged} of ${nowKg.length} identical`)
+  const ratio = nowKg[0] / wasLb[0]
+  assert(ratio > 0.4 && ratio < 0.5, '31e. by roughly the right factor',
+    `${wasLb[0]} lb became ${nowKg[0]} kg`)
+  assert(after.core.settings.barWeight === 20,
+    '31f. and the bar is the one that unit uses', `${after.core.settings.barWeight}`)
+
+  // Relabelling stays available, since it is what you want after a mistake.
+  await page.locator('select').first().selectOption('lb')
+  await page.waitForSelector('.sheet')
+  await page.getByRole('button', { name: 'Relabel without converting' }).click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const relabelled = await readState(page)
+  assert(weights(relabelled)[0] === nowKg[0],
+    '31g. relabelling leaves the numbers exactly where they were')
+
+  // Backing out has to leave the select showing what is actually stored.
+  await page.locator('select').first().selectOption('kg')
+  await page.waitForSelector('.sheet')
+  await page.getByRole('button', { name: 'Keep it as it is' }).click()
+  await page.waitForTimeout(400)
+  await flushStorage(page)
+  const kept = await readState(page)
+  assert(kept.core.settings.unit === 'lb', '31h. backing out changes nothing', kept.core.settings.unit)
+  assert(await page.locator('select').first().inputValue() === 'lb',
+    '31i. and the control snaps back to the unit you are actually on')
+  assert(errors.length === 0, '31. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 32. Controls that used to fight the thing next to them
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.waitForTimeout(300)
+
+  // Reading the haptics explanation used to toggle haptics, because the
+  // popover sat inside the label that owns the switch.
+  const row = page.locator('.switch-row').filter({ hasText: 'Haptics' })
+  const was = await row.locator('input.switch').isChecked()
+  await row.locator('.info-wrap').click()
+  await page.waitForTimeout(300)
+  assert(await page.locator('.info-pop').count() === 1, '32a. the haptics explanation opens')
+  assert(await row.locator('input.switch').isChecked() === was,
+    '32b. and reading it does not flip the switch')
+
+  // Bar weight was a hidden 45 with no way to change it.
+  const bar = page.locator('.row').filter({ hasText: 'Bar weight' })
+  assert(await bar.count() === 1, '32c. the bar you load is a setting you can see')
+  await bar.getByRole('button', { name: 'Raise bar weight' }).click()
+  await page.waitForTimeout(200)
+  await flushStorage(page)
+  assert((await readState(page)).core.settings.barWeight === 47.5,
+    '32d. and one you can change')
+
+  // A day row on Program was dead except for a small Edit button.
+  await page.locator('.tabbar').getByRole('button', { name: 'Program' }).click()
+  await page.waitForTimeout(300)
+  await page.locator('.row-open').first().click()
+  await page.waitForTimeout(500)
+  assert(page.url().includes('/program/'), '32e. tapping a day name opens the day', page.url())
+  assert(errors.length === 0, '32. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
  * 13–14. Small-screen render + screenshots, zero console errors
  * ================================================================== */
 {
@@ -1073,7 +1612,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.goto(BASE)
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  await page.waitForSelector('.group')
+  await ready(page)
   await page.getByRole('button', { name: 'Start', exact: true }).first().click()
   await page.waitForSelector('.set-editor')
   const overflow = await page.evaluate(

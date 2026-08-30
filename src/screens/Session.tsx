@@ -5,17 +5,20 @@ import { act } from '../store/actions'
 import { switchTab } from '../lib/router'
 import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
+import { HowToSheet } from '../components/HowToSheet'
 import { Screen, forgetScroll, revealAboveBars } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
-import { fmtClock, fmtWeight, uid } from '../lib/util'
-import { prefillFor } from '../lib/prefill'
+import { daysAgo, fmtClock, fmtWeight, plural, uid } from '../lib/util'
+import { fillPlanFor, prefillFor } from '../lib/prefill'
 import { reconcileWarmups } from '../lib/warmups'
 import { PLATES_KG, PLATES_LB, describePlates, platesFor } from '../lib/plates'
 import { PlateBar } from '../components/PlateBar'
 import { suggestionFor } from '../lib/suggest'
 import { InfoPopover } from '../components/InfoPopover'
+import { haptic } from '../lib/haptics'
+import { WARMUP_RULE, WORKING_RULE } from '../lib/rules'
 import {
-  lastPerformance, recordsIn, sessionDoneSetCount, sessionVolume, workingSets,
+  lastPerformance, recordsIn, sessionDoneSetCount, sessionVolume, workingRows, workingSets,
 } from '../lib/history'
 import { restBefore } from '../lib/timing'
 import { useNow } from '../lib/useNow'
@@ -106,6 +109,13 @@ const SetRow = ({
   const weightStep = catalog[exercise.exerciseId]?.increment ?? settings.weightStep
   const { reason } = suggestionFor({ sessions, settings, catalog }, exercise, session.id)
 
+  // A warm-up row means nothing without the number it is a fraction of.
+  const topWeight = exercise.sets.find((x) => !x.warmup)?.weight
+    ?? prefillFor({ sessions, settings, catalog }, session, exercise,
+      Math.max(0, exercise.sets.findIndex((x) => !x.warmup))).weight
+  const warmupPctLabel =
+    set.warmup && weight !== null && topWeight ? `${Math.round((weight / topWeight) * 100)}%` : 'part'
+
   return (
     <div className="set-editor" ref={editorRef}>
       <div className="row" style={{ marginBottom: 4 }}>
@@ -117,11 +127,16 @@ const SetRow = ({
         >
           {set.warmup ? 'Warm-up' : `Set ${displayOrdinal}`}
         </button>
-        {!set.warmup && (
-          <InfoPopover content={reason} label="Why this weight">
-            <span className="pill">Why</span>
-          </InfoPopover>
-        )}
+        <InfoPopover
+          content={
+            set.warmup
+              ? `A warm-up, not a working set. It is ${warmupPctLabel} of the weight you are about to lift, worked out for you and left out of your records and your volume. Tap the pill to turn it into a working set`
+              : reason
+          }
+          label={set.warmup ? 'What a warm-up is' : 'Why this weight'}
+        >
+          <span className="pill">{set.warmup ? `${warmupPctLabel} of your top set` : 'Why'}</span>
+        </InfoPopover>
         <span className="spacer" />
         {set.done && (
           <button
@@ -183,7 +198,10 @@ const SetRow = ({
         <button
           className="btn-filled block complete"
           onClick={() => {
-            if (act.completeSet(exercise.id, set.id)) onDone()
+            if (act.completeSet(exercise.id, set.id)) {
+              haptic(set.warmup ? 'select' : 'success')
+              onDone()
+            }
           }}
         >
           <IconCheck /> Complete set
@@ -211,12 +229,37 @@ const ExerciseCard = ({
   const catalog = useAppSelector((s) => s.catalog)
   const settings = useAppSelector((s) => s.settings)
   const [menu, setMenu] = useState(false)
+  const [howTo, setHowTo] = useState(false)
   const [confirmDeleteSet, setConfirmDeleteSet] = useState<string | null>(null)
 
   const last = useMemo(
     () => lastPerformance(sessions, exercise.exerciseId, session.id),
     [sessions, exercise.exerciseId, session.id],
   )
+
+  /**
+   * One tap writes every untouched set: the weight and reps this screen was
+   * already suggesting in grey. Nothing that is logged is touched, and the
+   * button says where the numbers came from before you press it.
+   */
+  const fill = useMemo(
+    () => fillPlanFor({ sessions, settings, catalog }, session, exercise),
+    [sessions, settings, catalog, session, exercise],
+  )
+
+  const applyFill = () => {
+    haptic('success')
+    exercise.sets.forEach((set, i) => {
+      if (set.done) return
+      const next = fill.values[i]
+      dispatch({
+        type: 'updateSet',
+        exId: exercise.id,
+        setId: set.id,
+        patch: { weight: next.weight, reps: next.reps },
+      })
+    })
+  }
 
   // A record is worth knowing about the moment you set it.
   const record = useMemo(
@@ -277,13 +320,28 @@ const ExerciseCard = ({
     dispatch({ type: 'setSets', exId: exercise.id, sets: next })
   }, [exercise, plannedWeight, increment])
 
+  // Working sets only: the rep range never described the warm-up ramp, so
+  // counting the ramp in here advertised eight sets of 8-10 for four of them.
+  const targetSets = workingRows(exercise).length
   const target = exercise.repLow === exercise.repHigh
-    ? `${exercise.sets.length} × ${exercise.repLow}`
-    : `${exercise.sets.length} × ${exercise.repLow}-${exercise.repHigh}`
+    ? `${targetSets} × ${exercise.repLow}`
+    : `${targetSets} × ${exercise.repLow}-${exercise.repHigh}`
 
+  /**
+   * Opens whatever you should do next, which is not always in this exercise.
+   *
+   * Completing the last set of a card used to close the editor and open
+   * nothing, so a workout dead ended on every exercise and you had to find
+   * the next one and tap a row. It carries across the whole session now.
+   */
   const advance = (fromIndex: number) => {
     const next = exercise.sets.find((s, i) => i > fromIndex && !s.done)
-    setActiveSetId(next?.id ?? null)
+    if (next) return setActiveSetId(next.id)
+    const later = session.exercises
+      .slice(index + 1)
+      .flatMap((e) => e.sets)
+      .find((s) => !s.done)
+    setActiveSetId(later?.id ?? null)
   }
 
   const removeLastSet = () => {
@@ -294,22 +352,41 @@ const ExerciseCard = ({
   }
 
   const daysAgoLabel = last
-    ? Math.floor((Date.now() - (last.session.finishedAt ?? last.session.startedAt)) / 86400000)
+    ? daysAgo(last.session.finishedAt ?? last.session.startedAt)
     : null
 
   return (
-    <section className="card ex-card">
+    <section
+      className="card ex-card"
+      onDoubleClick={(e) => {
+        // Anything you can press has its own meaning, so only the quiet parts
+        // of the card take the gesture.
+        if ((e.target as HTMLElement).closest('button, input, textarea, .tape')) return
+        if (fill.changes === 0) return
+        applyFill()
+      }}
+    >
+      <div className="ex-step t-caption label-3">
+        <span>Exercise {index + 1} of {count}</span>
+        <button
+          className="btn-plain ex-menu"
+          aria-label={`Options for ${exercise.name}`}
+          onClick={() => setMenu(true)}
+        >
+          ⋯
+        </button>
+      </div>
       <div className="ex-head">
-        <span className="ex-name">{exercise.name}</span>
+        <button className="ex-name" onClick={() => setHowTo(true)}>
+          <span className="ex-name-text">{exercise.name}</span>
+          <span className="how-hint" aria-hidden>?</span>
+        </button>
         {record && (
           <span className="pill record" title="Personal record">
             PR
           </span>
         )}
         <span className="pill num">{target}</span>
-        <button className="btn-plain" aria-label={`Options for ${exercise.name}`} onClick={() => setMenu(true)}>
-          ⋯
-        </button>
       </div>
 
       <div className="last-line">
@@ -329,8 +406,33 @@ const ExerciseCard = ({
         {exercise.notes && <div className="t-caption label-2" style={{ marginTop: 3 }}>{exercise.notes}</div>}
       </div>
 
-      {exercise.sets.map((set, i) =>
-        activeSetId === set.id ? (
+      {exercise.sets.map((set, i) => {
+        const first = i === 0 || exercise.sets[i - 1].warmup !== set.warmup
+        const heading = !first ? null : set.warmup ? (
+          <div className="set-group" key={`h${set.id}`}>
+            <InfoPopover content={WARMUP_RULE} label="What a warm-up set is">
+              <span className="holdable">
+                Warm-up · {plural(exercise.sets.filter((x) => x.warmup).length, 'set')}
+              </span>
+            </InfoPopover>
+          </div>
+        ) : (
+          <div className="set-group" key={`h${set.id}`}>
+            <InfoPopover content={WORKING_RULE} label="What a working set is">
+              <span className="holdable">
+                Working sets · {workingRows(exercise).length} × {
+                  exercise.repLow === exercise.repHigh
+                    ? exercise.repLow
+                    : `${exercise.repLow}-${exercise.repHigh}`
+                }
+              </span>
+            </InfoPopover>
+          </div>
+        )
+        return (
+          <div key={set.id}>
+          {heading}
+          {activeSetId === set.id ? (
           <SetRow
             key={set.id}
             session={session}
@@ -350,8 +452,10 @@ const ExerciseCard = ({
             onActivate={() => setActiveSetId(set.id)}
             onDone={() => {}}
           />
-        ),
-      )}
+        )}
+          </div>
+        )
+      })}
 
       <div className="row" style={{ marginTop: 8 }}>
         <button className="btn-plain" onClick={() => act.addSet(exercise.id)}>+ Set</button>
@@ -364,9 +468,24 @@ const ExerciseCard = ({
         </span>
       </div>
 
+      {howTo && <HowToSheet exercise={exercise} onClose={() => setHowTo(false)} />}
+
       {menu && (
         <Sheet title={exercise.name} onClose={() => setMenu(false)}>
           <div className="stack">
+            {fill.changes > 0 && (
+              <>
+                <button
+                  className="btn-tinted block"
+                  onClick={() => { applyFill(); setMenu(false) }}
+                >
+                  Fill {fill.changes} {fill.changes === 1 ? 'set' : 'sets'} {fill.from}
+                </button>
+                <p className="t-caption label-3">
+                  Taken from {fill.source}. Two taps on the exercise do the same
+                </p>
+              </>
+            )}
             <button className="btn-gray block" disabled={index === 0}
               onClick={() => { dispatch({ type: 'moveSessionExercise', exId: exercise.id, delta: -1 }); setMenu(false) }}>
               Move up
@@ -471,7 +590,7 @@ const LiveDuration = ({
   const now = useNow(1000)
   return (
     <span className="num">
-      {fmtClock((now - startedAt) / 1000)} · {sets} of {planned} sets
+      {fmtClock((now - startedAt) / 1000)} · {sets} of {plural(planned, 'set')}
     </span>
   )
 }
@@ -523,6 +642,55 @@ const AddExerciseSheet = ({ onClose }: { onClose: () => void }) => {
   )
 }
 
+/**
+ * One press to write every number the workout already knows.
+ *
+ * The per-exercise version of this used to sit on every card, which made the
+ * screen shout nine suggestions at you. There is one of it now, it appears
+ * only when it would actually change something, and it goes quiet again the
+ * moment there is nothing left to write.
+ */
+const FillAll = ({ session }: { session: Session }) => {
+  const sessions = useAppSelector((s) => s.sessions)
+  const settings = useAppSelector((s) => s.settings)
+  const catalog = useAppSelector((s) => s.catalog)
+
+  // Every plan is read off one snapshot: an exercise's fill depends on its
+  // own history and nothing else on the screen, so none of them can stale.
+  const plans = useMemo(
+    () => session.exercises.map((exercise) => ({
+      exercise,
+      plan: fillPlanFor({ sessions, settings, catalog }, session, exercise),
+    })),
+    [sessions, settings, catalog, session],
+  )
+  const changes = plans.reduce((n, p) => n + p.plan.changes, 0)
+  if (changes === 0) return null
+
+  return (
+    <button
+      className="btn-plain fill-session"
+      onClick={() => {
+        haptic('success')
+        for (const { exercise, plan } of plans) {
+          exercise.sets.forEach((set, i) => {
+            if (set.done) return
+            const next = plan.values[i]
+            dispatch({
+              type: 'updateSet',
+              exId: exercise.id,
+              setId: set.id,
+              patch: { weight: next.weight, reps: next.reps },
+            })
+          })
+        }
+      }}
+    >
+      Fill all {plural(changes, 'set')}
+    </button>
+  )
+}
+
 export const SessionScreen = () => {
   const session = useAppSelector(selectActive)
   const [adding, setAdding] = useState(false)
@@ -560,6 +728,8 @@ export const SessionScreen = () => {
             </div>
           </>
         )}
+
+        <FillAll session={session} />
 
         {session.exercises.map((e, i) => (
           <ExerciseCard
@@ -620,6 +790,7 @@ export const SessionScreen = () => {
               className="btn-filled block" disabled={done === 0}
               onClick={() => {
                 forgetScroll(`session/${session.id}`)
+                haptic('record')
                 act.finishSession()
                 switchTab('/')
               }}

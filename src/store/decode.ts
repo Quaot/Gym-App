@@ -199,8 +199,10 @@ export const defaultSettings = (): Settings => ({
   autoStartTimer: true,
   weightStep: 5,
   tickSound: true,
+  haptics: true,
   bodyweight: 175,
   barWeight: 45,
+  seenWelcome: false,
 })
 
 const decodeSettings = (v: unknown): Settings => {
@@ -213,8 +215,10 @@ const decodeSettings = (v: unknown): Settings => {
     autoStartTimer: bool(v.autoStartTimer, d.autoStartTimer),
     weightStep: Math.max(0.25, num(v.weightStep, d.weightStep)),
     tickSound: bool(v.tickSound, d.tickSound),
+    haptics: bool(v.haptics, d.haptics),
     bodyweight: Math.max(0, num(v.bodyweight, d.bodyweight)),
     barWeight: Math.max(0, num(v.barWeight, d.barWeight)),
+    seenWelcome: bool(v.seenWelcome, d.seenWelcome),
   }
 }
 

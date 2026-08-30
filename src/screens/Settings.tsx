@@ -9,8 +9,10 @@ import type { Unit } from '../types'
 import { SleepImportCard } from './SleepImport'
 import { askForNotifications, notificationsSupported } from '../lib/notify'
 import { Screen } from '../app/Screen'
+import { navigate } from '../lib/router'
 import { generateDemoData, DEMO_PREFIX } from '../lib/demo'
 import { InfoPopover } from '../components/InfoPopover'
+import { weighedSetCount } from '../lib/units'
 
 const useStorageHealthy = () =>
   useSyncExternalStore(subscribeStorageHealth, isStorageHealthy)
@@ -41,12 +43,53 @@ const RestAlerts = () => {
   )
 }
 
+/**
+ * Changing the unit is a change to every weight you have ever logged, so it
+ * asks first. Converting is what you almost always want; relabelling is for
+ * the case where the numbers were typed in the other unit to begin with.
+ */
+const UnitSwitchSheet = ({ to, onClose }: { to: Unit; onClose: () => void }) => {
+  const sets = weighedSetCount(getStore().getState())
+  const name = to === 'kg' ? 'kilograms' : 'pounds'
+
+  return (
+    <Sheet title={`Switch to ${name}?`} onClose={onClose}>
+      <div className="stack">
+        <p className="t-footnote label-2">
+          {sets === 0
+            ? 'Nothing is logged yet, so there is nothing to convert'
+            : `You have ${sets} logged ${sets === 1 ? 'set' : 'sets'} with a weight on them`}
+        </p>
+        <button
+          className="btn-filled block"
+          onClick={() => { dispatch({ type: 'setUnit', unit: to, convert: true }); onClose() }}
+        >
+          Convert everything
+        </button>
+        <button
+          className="btn-gray block"
+          onClick={() => { dispatch({ type: 'setUnit', unit: to, convert: false }); onClose() }}
+        >
+          Relabel without converting
+        </button>
+        <p className="t-caption label-3">
+          Relabel only if you were already lifting in {name} and the app had it
+          wrong, since it changes what every number means
+        </p>
+        <button className="btn-gray block" onClick={onClose}>Keep it as it is</button>
+      </div>
+    </Sheet>
+  )
+}
+
 export const SettingsScreen = () => {
   const settings = useAppSelector((s) => s.settings)
   const healthy = useStorageHealthy()
   const fileRef = useRef<HTMLInputElement>(null)
   const [confirmReset, setConfirmReset] = useState(false)
   const [message, setMessage] = useState<string | null>(null)
+  /** A unit the select is asking for, held until you say what to do with it. */
+  const [switchTo, setSwitchTo] = useState<Unit | null>(null)
 
   const exportBackup = () => {
     // Export a clean snapshot: no in-flight session pointer, so restoring on
@@ -74,7 +117,29 @@ export const SettingsScreen = () => {
     dispatch({ type: 'setSettings', patch })
 
   return (
-    <Screen id="settings" title="Settings" large>
+    <Screen
+      id="settings"
+      title="Settings"
+      large
+      help={[
+        'Units, rest and your data',
+        'Start with How this works if anything in the app is unclear',
+        'Your workouts live on this phone alone, so export a backup and keep it somewhere else',
+      ]}
+    >
+        <div className="section-header">Help</div>
+        <div className="group">
+          <button className="row-item" onClick={() => navigate('/settings/guide')}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 650 }}>How this works</div>
+              <div className="t-footnote label-2">
+                Every number the app fills in, and where it comes from
+              </div>
+            </div>
+            <span className="chevron">›</span>
+          </button>
+        </div>
+
         {!healthy && (
           <div className="warning" role="alert">
             Storage is full and nothing is saving, so export a backup and free up space
@@ -87,7 +152,7 @@ export const SettingsScreen = () => {
             <span>Weight unit</span>
             <select
               value={settings.unit}
-              onChange={(e) => dispatch({ type: 'setSettings', patch: { unit: e.target.value as Unit } })}
+              onChange={(e) => setSwitchTo(e.target.value as Unit)}
             >
               <option value="kg">Kilograms (kg)</option>
               <option value="lb">Pounds (lb)</option>
@@ -108,8 +173,23 @@ export const SettingsScreen = () => {
           </div>
 
           <div className="row" style={{ justifyContent: 'space-between' }}>
+            <InfoPopover content="The bar you load, so the plate list under a barbell set adds up. A standard bar is 45 lb or 20 kg">
+              <span className="t-footnote label-2 holdable">Bar weight</span>
+            </InfoPopover>
+            <div className="row" style={{ gap: 6 }}>
+              <button className="btn-step" aria-label="Lower bar weight"
+                onClick={() => dispatch({ type: 'setSettings', patch: { barWeight: Math.max(0, settings.barWeight - 2.5) } })}>−</button>
+              <span className="num" style={{ minWidth: 52, textAlign: 'center', fontWeight: 600 }}>
+                {settings.barWeight}
+              </span>
+              <button className="btn-step" aria-label="Raise bar weight"
+                onClick={() => dispatch({ type: 'setSettings', patch: { barWeight: settings.barWeight + 2.5 } })}>+</button>
+            </div>
+          </div>
+
+          <div className="row" style={{ justifyContent: 'space-between' }}>
             <InfoPopover content="Used to size jumps on pull-ups and dips, where the plates are only part of the load">
-              <span className="t-footnote label-2">Bodyweight</span>
+              <span className="t-footnote label-2 holdable">Bodyweight</span>
             </InfoPopover>
             <div className="row" style={{ gap: 6 }}>
               <button className="btn-step" aria-label="Lower bodyweight"
@@ -147,6 +227,16 @@ export const SettingsScreen = () => {
             <input type="checkbox" className="switch" checked={settings.tickSound}
               onChange={(e) => dispatch({ type: 'setSettings', patch: { tickSound: e.target.checked } })} />
           </label>
+          {/* Not a label: a click anywhere inside one activates its control,
+              so reading the explanation would have flipped the switch. */}
+          <div className="row switch-row">
+            <InfoPopover content="Wheel detents, a set logged and the rest timer ending. An iPhone only feels these on iOS 17.4 or later, and some browsers give nothing at all">
+              <span className="t-subhead holdable">Haptics</span>
+            </InfoPopover>
+            <span className="spacer" />
+            <input type="checkbox" className="switch" aria-label="Haptics" checked={settings.haptics}
+              onChange={(e) => dispatch({ type: 'setSettings', patch: { haptics: e.target.checked } })} />
+          </div>
           <RestAlerts />
         </div>
 
@@ -197,6 +287,10 @@ export const SettingsScreen = () => {
             <button className="btn-filled block" onClick={() => setMessage(null)}>OK</button>
           </div>
         </Sheet>
+      )}
+
+      {switchTo && (
+        <UnitSwitchSheet to={switchTo} onClose={() => setSwitchTo(null)} />
       )}
 
       {confirmReset && (

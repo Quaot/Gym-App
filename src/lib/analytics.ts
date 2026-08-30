@@ -39,7 +39,10 @@ export const exerciseTrend = (state: AppState, exerciseId: ID): TrendPoint[] => 
       const top = bestSet(e, bodyweight)
       if (!top) continue
       const score = est1RM(top, bodyweight)
-      const isPR = score > best
+      // The first session on a movement is a baseline, not a record. This is
+      // the rule recordsIn already applies during a workout, and the chart
+      // used to disagree with it and count one PR too many for every lift.
+      const isPR = best > 0 && score > best
       best = Math.max(best, score)
       points.push({
         t: session.finishedAt ?? session.startedAt,

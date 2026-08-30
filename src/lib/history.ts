@@ -3,6 +3,13 @@ import type { AppState, ID, LoggedSet, Session, SessionExercise } from '../types
 export const workingSets = (e: SessionExercise): LoggedSet[] =>
   e.sets.filter((s) => s.done && !s.warmup && s.reps !== null)
 
+/**
+ * The rows the rep range describes, logged or not. Distinct from workingSets,
+ * which is only the ones you have already done.
+ */
+export const workingRows = (e: SessionExercise): LoggedSet[] =>
+  e.sets.filter((s) => !s.warmup)
+
 export const warmupSets = (e: SessionExercise): LoggedSet[] =>
   e.sets.filter((s) => s.done && s.warmup && s.reps !== null)
 

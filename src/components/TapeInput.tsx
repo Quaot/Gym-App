@@ -3,6 +3,7 @@ import { detentTick, unlockAudio } from '../lib/audio'
 import {
   MIN_FLICK, PX_PER_STEP, RUBBER, coastLanding, quantizeToStep, velocityFrom,
 } from '../lib/gestures'
+import { haptic } from '../lib/haptics'
 
 export interface TapeInputProps {
   /** Committed value. null renders the ghost. */
@@ -177,7 +178,7 @@ export const TapeInput = ({
     const v = quantize(valueAt(offsetPx))
     if (v !== g.lastDetent) {
       g.lastDetent = v
-      navigator.vibrate?.(4)
+      haptic('tick')
       if (tickSound) detentTick()
     }
   }
@@ -279,7 +280,7 @@ export const TapeInput = ({
       // Offset of the release position relative to the value about to commit.
       glideFrom.current = offsetPx - ((final - shown) / step) * PX_PER_STEP
       if (tickSound) detentTick()
-      navigator.vibrate?.(4)
+      haptic('tick')
       commitRef.current(final)
     } else {
       settle(landing)

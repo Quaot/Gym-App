@@ -1,6 +1,8 @@
-import { useEffect, useLayoutEffect, useRef } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { titleProgress } from '../lib/gestures'
+import { Sheet } from '../components/Sheet'
+import { navigate } from '../lib/router'
 
 /**
  * One screen of the app: a fixed bar over its own scroller.
@@ -46,12 +48,19 @@ interface Props {
   trailing?: ReactNode
   /** Centres the compact title even when only one side has buttons. */
   centerTitle?: boolean
+  /**
+   * What this screen is for, kept off the screen itself. It arrives on a tap
+   * of the circled i beside the title, so reading it is a choice you make
+   * once rather than a paragraph you scroll past every time.
+   */
+  help?: string[]
   children: ReactNode
 }
 
 export const Screen = ({
-  id, title, subtitle, large = false, leading, trailing, centerTitle = false, children,
+  id, title, subtitle, large = false, leading, trailing, centerTitle = false, help, children,
 }: Props) => {
+  const [helpOpen, setHelpOpen] = useState(false)
   const scroller = useRef<HTMLDivElement | null>(null)
   const bar = useRef<HTMLElement | null>(null)
   const barTitle = useRef<HTMLDivElement | null>(null)
@@ -131,12 +140,40 @@ export const Screen = ({
       <div className="scroller" ref={scroller} onScroll={onScroll}>
         {large ? (
           <div className="large-title">
-            <h1>{title}</h1>
+            <h1>
+              {title}
+              {help ? (
+                <button
+                  className="title-help"
+                  aria-label="About this screen"
+                  onClick={() => setHelpOpen(true)}
+                >
+                  i
+                </button>
+              ) : null}
+            </h1>
             {subtitle ? <div className="sub">{subtitle}</div> : null}
           </div>
         ) : null}
         <main className="main">{children}</main>
       </div>
+
+      {helpOpen && help ? (
+        <Sheet title="About this screen" onClose={() => setHelpOpen(false)}>
+          <div className="stack help-sheet">
+            {help.map((line) => <p key={line}>{line}</p>)}
+            <button
+              className="btn-gray block"
+              onClick={() => {
+                setHelpOpen(false)
+                navigate('/settings/guide')
+              }}
+            >
+              How this works
+            </button>
+          </div>
+        </Sheet>
+      ) : null}
     </div>
   )
 }
