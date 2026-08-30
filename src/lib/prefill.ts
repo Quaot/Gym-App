@@ -92,6 +92,8 @@ export interface FillPlan {
   values: Prefill[]
   /** Where the numbers came from, in words, for the button that applies them. */
   source: string
+  /** The same thing in two or three words, short enough to sit in the button. */
+  from: string
   /** Sets that would actually change. */
   changes: number
 }
@@ -142,6 +144,7 @@ export const fillPlanFor = (
     : straight
       ? 'last time, with the increase the app suggests'
       : 'last time, set for set'
+  const from = !last ? 'to start' : 'from last time'
 
-  return { values, source, changes }
+  return { values, source, from, changes }
 }

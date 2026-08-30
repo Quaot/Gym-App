@@ -71,7 +71,11 @@ export const Home = () => {
         month: 'long',
       })}
       large
-      blurb="Your rotation, and the day that comes next. Start any day you like, since the order here is a suggestion rather than a rule"
+      help={[
+        'Your rotation, and the day that comes next',
+        'The order is a suggestion rather than a rule, so start any day you like by tapping it',
+        'A workout you leave unfinished waits here until you come back to it',
+      ]}
     >
         {active && (
           <div className="group">

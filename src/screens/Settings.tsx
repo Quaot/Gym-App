@@ -79,7 +79,11 @@ export const SettingsScreen = () => {
       id="settings"
       title="Settings"
       large
-      blurb="Units, rest and your data. Start with How this works if anything in the app is unclear"
+      help={[
+        'Units, rest and your data',
+        'Start with How this works if anything in the app is unclear',
+        'Your workouts live on this phone alone, so export a backup and keep it somewhere else',
+      ]}
     >
         <div className="section-header">Help</div>
         <div className="group">

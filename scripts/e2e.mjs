@@ -49,10 +49,10 @@ const newPage = async (viewport = { width: 390, height: 844 }) => {
 
 const readState = (page) =>
   page.evaluate(() => ({
-    core: JSON.parse(localStorage.getItem('gym:v4:core') ?? 'null'),
-    sessions: JSON.parse(localStorage.getItem('gym:v4:sessions') ?? '[]'),
-    sleep: JSON.parse(localStorage.getItem('gym:v4:sleep') ?? '[]'),
-    rest: JSON.parse(localStorage.getItem('gym:v4:rest') ?? 'null'),
+    core: JSON.parse(localStorage.getItem('gym:v5:core') ?? 'null'),
+    sessions: JSON.parse(localStorage.getItem('gym:v5:sessions') ?? '[]'),
+    sleep: JSON.parse(localStorage.getItem('gym:v5:sleep') ?? '[]'),
+    rest: JSON.parse(localStorage.getItem('gym:v5:rest') ?? 'null'),
   }))
 
 const flushStorage = (page) =>
@@ -139,7 +139,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   const v1 = JSON.parse(v1Fixture)
   const state = await readState(page)
-  assert(state.core?.version === 4, '1. v1 blob migrates all the way to the v4 keys')
+  assert(state.core?.version === 5, '1. v1 blob migrates all the way to the v5 keys')
   assert(
     await page.evaluate(() => localStorage.getItem('gym-app:state:v1')) === null,
     '1. old key removed after migration',
@@ -170,7 +170,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     // time of a *valid* envelope: decode repairs this, so instead poison the
     // renderer path via an unparsable core that forces the fresh-state path…
     // …which never throws. So simulate the true worst case: a render crash.
-    localStorage.setItem('gym:v4:core', '{"version":4') // truncated JSON
+    localStorage.setItem('gym:v5:core', '{"version":5') // truncated JSON
   })
   await page.reload()
   await ready(page)
@@ -178,7 +178,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Force a genuine render crash to exercise the ErrorBoundary itself.
   await page.evaluate(() => {
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'x', startedAt: 1, finishedAt: 2, dayName: 'D', dayNotes: '', notes: '',
       exercises: [], programId: null, dayId: null,
     }]))
@@ -412,7 +412,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
         }],
       })
     }
-    localStorage.setItem('gym:v4:sessions', JSON.stringify(sessions))
+    localStorage.setItem('gym:v5:sessions', JSON.stringify(sessions))
   })
   await page.reload()
   await ready(page)
@@ -508,7 +508,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.reload()
   await ready(page)
   await page.evaluate(() => {
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'orphan1', programId: null, dayId: null, dayName: 'Push 1', dayNotes: '', notes: '',
       startedAt: Date.now() - 86400000, finishedAt: null,
       exercises: [{
@@ -557,10 +557,10 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Seed one topped bench session so the engine has a weight to plan from.
   await page.evaluate(() => {
-    const core = JSON.parse(localStorage.getItem('gym:v4:core'))
+    const core = JSON.parse(localStorage.getItem('gym:v5:core'))
     const day = core.programs[0].days[0]
     const t = Date.now() - 3 * 86400000
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'seed', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
       dayNotes: day.notes, startedAt: t - 3600000, finishedAt: t, notes: '',
       exercises: [{
@@ -903,10 +903,10 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Seed a bench session so today can beat it.
   await page.evaluate(() => {
-    const core = JSON.parse(localStorage.getItem('gym:v4:core'))
+    const core = JSON.parse(localStorage.getItem('gym:v5:core'))
     const day = core.programs[0].days[0]
     const t = Date.now() - 3 * 86400000
-    localStorage.setItem('gym:v4:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
       id: 'past', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
       dayNotes: '', startedAt: t - 3600000, finishedAt: t, notes: '',
       exercises: [{
@@ -1138,12 +1138,11 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   const fill = page.locator('.fill-all').first()
   assert(await fill.count() === 1, '24a. an exercise with history offers to fill itself')
   const label = await fill.innerText()
-  assert(/^Fill \d+ sets?$/.test(label), '24b. the button says how many sets it would write', label)
+  assert(/^Fill \d+ sets? (from last time|to start)$/.test(label),
+    '24b. the button says how many sets and where they come from', label)
   const offered = Number(label.match(/\d+/)[0])
   assert(offered > 0, '24c. it offers a real number of sets', label)
-  const why = await page.locator('.fill-why').first().innerText()
-  assert(/^Taken from \S/.test(why) && why.length > 20,
-    '24h. and says underneath where the numbers come from', why)
+  assert(label.split('\n').length === 1, '24h. and says it on one line', label)
 
   await fill.click()
   await page.waitForTimeout(300)
@@ -1262,6 +1261,117 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     '26f. back returns to Settings')
   assert(await page.locator('.tabbar').isVisible(), '26g. with the tab bar still there')
   assert(errors.length === 0, '26. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 27. Every screen explains itself on request, and not before
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+
+  const badDash = []
+  const badStop = []
+  for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
+    await page.locator('.tabbar').getByRole('button', { name: tab }).click()
+    await page.waitForTimeout(250)
+    assert(await page.locator('.blurb').count() === 0,
+      `27a. ${tab} opens without a paragraph of explanation`)
+    const help = page.locator('.title-help')
+    assert(await help.count() === 1, `27b. ${tab} carries one way to ask what it is for`)
+
+    await help.click()
+    await page.waitForSelector('.help-sheet')
+    const text = await page.locator('.help-sheet').innerText()
+    assert(text.length > 80, `27c. ${tab} actually says something when asked`, text.slice(0, 60))
+    assert(await page.locator('.sheet').getByRole('button', { name: 'How this works' }).count() === 1,
+      `27d. ${tab} offers the full guide from its help`)
+    for (const line of text.split('\n')) {
+      if (/[—–]/.test(line) || / - /.test(line)) badDash.push(`${tab}: ${line}`)
+      if (/[a-z0-9)\]]\.$/.test(line.trim())) badStop.push(`${tab}: ${line}`)
+    }
+    await page.locator('.sheet').getByRole('button', { name: 'Close' }).click()
+    await page.waitForSelector('.sheet-backdrop', { state: 'detached' })
+  }
+  // The prose moved into the sheets, so the house rules follow it there.
+  assert(badDash.length === 0, '27e. no dashes in any help sheet', badDash.join(' | '))
+  assert(badStop.length === 0, '27f. and nothing ends on a period', badStop.join(' | '))
+
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(200)
+  await page.locator('.title-help').click()
+  await page.waitForSelector('.help-sheet')
+  await page.getByRole('button', { name: 'How this works' }).click()
+  await page.waitForSelector('.guide-entry')
+  assert(page.url().includes('/settings/guide'), '27g. help leads into the guide', page.url())
+  assert(await page.locator('.sheet-backdrop').count() === 0,
+    '27h. and closes itself on the way, leaving no sheet behind')
+  assert(errors.length === 0, '27. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 28. The workout keeps its explanations behind a press
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+  // Warm-up rows only exist once a working weight is known, so seed history.
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: 'Add sample data' }).click()
+  await page.waitForTimeout(400)
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(250)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.ex-card')
+
+  const headings = await page.locator('.set-group').allInnerTexts()
+  const warm = headings.find((h) => h.startsWith('Warm-up'))
+  const work = headings.find((h) => h.startsWith('Working sets'))
+  assert(warm !== undefined && work !== undefined,
+    '28a. the ramp and the working sets are still named apart', headings.join(' | '))
+  for (const h of [warm, work]) {
+    assert(/·/.test(h) && h.length < 30,
+      '28b. each heading is a label, not a sentence', h)
+    assert(!/counted|reps$/.test(h), '28c. its explanation is no longer printed beside it', h)
+  }
+  assert(await page.locator('.fill-why').count() === 0,
+    '28d. and the fill button has no caption under it either')
+
+  const warmGroup = page.locator('.set-group').filter({ hasText: 'Warm-up' }).first()
+  await warmGroup.locator('.info-wrap').click()
+  const popup = page.locator('.info-pop')
+  await popup.waitFor()
+  // Measure and read in one go: the popover dismisses itself on the next
+  // press or scroll, so a second round trip can find it already gone.
+  const shown = await popup.evaluate((el) => {
+    const box = el.getBoundingClientRect()
+    return { text: el.textContent ?? '', top: box.top, bottom: box.bottom }
+  })
+  assert(shown.text.length > 60, '28e. pressing the heading explains it', shown.text.slice(0, 60))
+  assert(/loads a barbell/.test(shown.text),
+    '28f. with the warm-up rule as the app states it everywhere', shown.text)
+
+  // A heading near the top of the screen must not explain itself off the top.
+  const view = page.viewportSize()
+  assert(shown.top >= 0 && shown.bottom <= view.height,
+    '28g. and the explanation lands on the screen, not off the top of it',
+    `${Math.round(shown.top)}..${Math.round(shown.bottom)} of ${view.height}`)
+
+  // The guide has to be telling the same story, in the same words.
+  await page.locator('.tabbar').getByRole('button', { name: 'Settings' }).click()
+  await page.getByRole('button', { name: /How this works/ }).click()
+  await page.waitForSelector('.guide-entry')
+  const guideText = await page.locator('.screen-inner[data-screen="settings/guide"]').innerText()
+  assert(/loads a barbell/.test(guideText), '28h. and so does the guide')
+  assert(errors.length === 0, '28. no console errors', errors.join('; '))
   await ctx.close()
 }
 

@@ -27,7 +27,11 @@ export const ProgramScreen = () => {
       title="Program"
       subtitle={program.name}
       large
-      blurb="The plan itself: what each day contains and how many sets of what. Editing here changes future workouts and never touches one you have already saved"
+      help={[
+        'The plan itself: what each day contains and how many sets of what',
+        'Editing here changes future workouts and never touches one you have already saved',
+        'Warm-up rows are not listed, because the app builds them from the weight you are about to lift',
+      ]}
       trailing={
         <>
           <button className="btn-plain" onClick={() => setManaging(true)}>Splits</button>

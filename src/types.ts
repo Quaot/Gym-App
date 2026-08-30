@@ -1,7 +1,7 @@
 export type ID = string
 export type Unit = 'kg' | 'lb'
 
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 /**
  * Catalog entry — the stable identity of a movement. Templates and logged
