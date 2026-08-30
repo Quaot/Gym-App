@@ -9,6 +9,7 @@ import type { Unit } from '../types'
 import { SleepImportCard } from './SleepImport'
 import { askForNotifications, notificationsSupported } from '../lib/notify'
 import { Screen } from '../app/Screen'
+import { navigate } from '../lib/router'
 import { generateDemoData, DEMO_PREFIX } from '../lib/demo'
 import { InfoPopover } from '../components/InfoPopover'
 
@@ -74,7 +75,25 @@ export const SettingsScreen = () => {
     dispatch({ type: 'setSettings', patch })
 
   return (
-    <Screen id="settings" title="Settings" large>
+    <Screen
+      id="settings"
+      title="Settings"
+      large
+      blurb="Units, rest and your data. Start with How this works if anything in the app is unclear"
+    >
+        <div className="section-header">Help</div>
+        <div className="group">
+          <button className="row-item" onClick={() => navigate('/settings/guide')}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 650 }}>How this works</div>
+              <div className="t-footnote label-2">
+                Every number the app fills in, and where it comes from
+              </div>
+            </div>
+            <span className="chevron">›</span>
+          </button>
+        </div>
+
         {!healthy && (
           <div className="warning" role="alert">
             Storage is full and nothing is saving, so export a backup and free up space

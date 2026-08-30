@@ -201,6 +201,7 @@ export const defaultSettings = (): Settings => ({
   tickSound: true,
   bodyweight: 175,
   barWeight: 45,
+  seenWelcome: false,
 })
 
 const decodeSettings = (v: unknown): Settings => {
@@ -215,6 +216,7 @@ const decodeSettings = (v: unknown): Settings => {
     tickSound: bool(v.tickSound, d.tickSound),
     bodyweight: Math.max(0, num(v.bodyweight, d.bodyweight)),
     barWeight: Math.max(0, num(v.barWeight, d.barWeight)),
+    seenWelcome: bool(v.seenWelcome, d.seenWelcome),
   }
 }
 

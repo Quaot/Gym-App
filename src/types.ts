@@ -130,6 +130,8 @@ export interface Settings {
   bodyweight: number
   /** The bar you load, so the app can tell you which plates to hang on it. */
   barWeight: number
+  /** Whether the welcome has been seen, so it appears exactly once. */
+  seenWelcome: boolean
 }
 
 export interface AppState {

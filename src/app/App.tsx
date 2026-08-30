@@ -5,12 +5,14 @@ import { useAppSelector } from '../store/store'
 import { EDGE, parallaxOffset, swipeCommits } from '../lib/gestures'
 import { IconChart, IconClock, IconCog, IconDumbbell, IconHome } from '../components/icons'
 import { RestBar } from './RestBar'
+import { Welcome } from './Welcome'
 import { Home } from '../screens/Home'
 import { SessionScreen } from '../screens/Session'
 import { HistoryList, SessionDetail } from '../screens/History'
 import { ProgramScreen, DayEditor } from '../screens/Program'
 import { ProgressScreen, ExerciseDetail } from '../screens/Progress'
 import { SettingsScreen } from '../screens/Settings'
+import { GuideScreen } from '../screens/Guide'
 
 const TABS = [
   { path: '/', label: 'Today', Icon: IconHome },
@@ -89,7 +91,7 @@ const screenFor = (segments: string[], hasActive: boolean): ReactNode => {
     case 'progress':
       return param ? <ExerciseDetail exerciseId={param} /> : <ProgressScreen />
     case 'settings':
-      return <SettingsScreen />
+      return param === 'guide' ? <GuideScreen /> : <SettingsScreen />
     default:
       return <Home />
   }
@@ -100,6 +102,7 @@ let serial = 0
 export const App = () => {
   const segments = useRoute()
   const hasActive = useAppSelector((s) => s.activeSessionId !== null)
+  const seenWelcome = useAppSelector((s) => s.settings.seenWelcome)
   const path = pathOf(segments)
   const depth = depthOf(segments)
   const modal = isModal(segments)
@@ -275,6 +278,7 @@ export const App = () => {
           {screenFor(top, hasActive)}
         </div>
       </div>
+      {!seenWelcome && <Welcome />}
       <RestBar />
       <TabBar active={`/${segments[0] ?? ''}`} />
     </div>

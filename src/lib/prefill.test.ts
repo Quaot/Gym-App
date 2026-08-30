@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { prefillFor } from './prefill'
+import { fillPlanFor, prefillFor } from './prefill'
 import { freshState } from '../store/migrate'
 import type { AppState, LoggedSet, Session, SessionExercise } from '../types'
 
@@ -192,5 +192,44 @@ describe('contract with completeSet (bug 10)', () => {
     const state = stateWith([today, lastSession()])
     const ghost = prefillFor(state, today, today.exercises[0], 0)
     expect(ghost).toEqual({ weight: 100, reps: 5 })
+  })
+})
+
+describe('fillPlanFor: what the button would write', () => {
+  const live = (sets: LoggedSet[]) => session([exercise(sets)])
+
+  it('counts only the sets it would actually change', () => {
+    const today = live([set({}), set({})])
+    const plan = fillPlanFor(stateWith([lastSession()]), today, today.exercises[0])
+    expect(plan.changes).toBe(2)
+  })
+
+  it('never counts a set that is already logged', () => {
+    const today = live([set({ weight: 100, reps: 5, done: true, completedAt: 1 }), set({})])
+    const plan = fillPlanFor(stateWith([lastSession()]), today, today.exercises[0])
+    expect(plan.changes).toBe(1)
+  })
+
+  it('offers nothing once every set holds what it would write', () => {
+    const today = live([set({}), set({})])
+    const state = stateWith([lastSession()])
+    const first = fillPlanFor(state, today, today.exercises[0])
+    const filled = live(
+      first.values.map((v) => set({ weight: v.weight, reps: v.reps })),
+    )
+    expect(fillPlanFor(state, filled, filled.exercises[0]).changes).toBe(0)
+  })
+
+  it('gives one value per set, in set order', () => {
+    const today = live([set({ warmup: true }), set({}), set({})])
+    const plan = fillPlanFor(stateWith([lastSession()]), today, today.exercises[0])
+    expect(plan.values).toHaveLength(3)
+  })
+
+  it('says where the numbers come from in words', () => {
+    const today = live([set({})])
+    expect(fillPlanFor(stateWith([]), today, today.exercises[0]).source).toMatch(/first time/)
+    expect(fillPlanFor(stateWith([lastSession()]), today, today.exercises[0]).source.length)
+      .toBeGreaterThan(5)
   })
 })

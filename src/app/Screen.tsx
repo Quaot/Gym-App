@@ -46,11 +46,13 @@ interface Props {
   trailing?: ReactNode
   /** Centres the compact title even when only one side has buttons. */
   centerTitle?: boolean
+  /** One line under the large title saying what this screen is for. */
+  blurb?: string
   children: ReactNode
 }
 
 export const Screen = ({
-  id, title, subtitle, large = false, leading, trailing, centerTitle = false, children,
+  id, title, subtitle, large = false, leading, trailing, centerTitle = false, blurb, children,
 }: Props) => {
   const scroller = useRef<HTMLDivElement | null>(null)
   const bar = useRef<HTMLElement | null>(null)
@@ -133,6 +135,7 @@ export const Screen = ({
           <div className="large-title">
             <h1>{title}</h1>
             {subtitle ? <div className="sub">{subtitle}</div> : null}
+            {blurb ? <p className="blurb">{blurb}</p> : null}
           </div>
         ) : null}
         <main className="main">{children}</main>

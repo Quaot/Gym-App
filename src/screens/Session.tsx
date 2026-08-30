@@ -5,17 +5,18 @@ import { act } from '../store/actions'
 import { switchTab } from '../lib/router'
 import { TapeInput } from '../components/TapeInput'
 import { Sheet } from '../components/Sheet'
+import { HowToSheet } from '../components/HowToSheet'
 import { Screen, forgetScroll, revealAboveBars } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
 import { fmtClock, fmtWeight, uid } from '../lib/util'
-import { prefillFor } from '../lib/prefill'
+import { fillPlanFor, prefillFor } from '../lib/prefill'
 import { reconcileWarmups } from '../lib/warmups'
 import { PLATES_KG, PLATES_LB, describePlates, platesFor } from '../lib/plates'
 import { PlateBar } from '../components/PlateBar'
 import { suggestionFor } from '../lib/suggest'
 import { InfoPopover } from '../components/InfoPopover'
 import {
-  lastPerformance, recordsIn, sessionDoneSetCount, sessionVolume, workingSets,
+  lastPerformance, recordsIn, sessionDoneSetCount, sessionVolume, workingRows, workingSets,
 } from '../lib/history'
 import { restBefore } from '../lib/timing'
 import { useNow } from '../lib/useNow'
@@ -106,6 +107,13 @@ const SetRow = ({
   const weightStep = catalog[exercise.exerciseId]?.increment ?? settings.weightStep
   const { reason } = suggestionFor({ sessions, settings, catalog }, exercise, session.id)
 
+  // A warm-up row means nothing without the number it is a fraction of.
+  const topWeight = exercise.sets.find((x) => !x.warmup)?.weight
+    ?? prefillFor({ sessions, settings, catalog }, session, exercise,
+      Math.max(0, exercise.sets.findIndex((x) => !x.warmup))).weight
+  const warmupPctLabel =
+    set.warmup && weight !== null && topWeight ? `${Math.round((weight / topWeight) * 100)}%` : 'part'
+
   return (
     <div className="set-editor" ref={editorRef}>
       <div className="row" style={{ marginBottom: 4 }}>
@@ -117,11 +125,16 @@ const SetRow = ({
         >
           {set.warmup ? 'Warm-up' : `Set ${displayOrdinal}`}
         </button>
-        {!set.warmup && (
-          <InfoPopover content={reason} label="Why this weight">
-            <span className="pill">Why</span>
-          </InfoPopover>
-        )}
+        <InfoPopover
+          content={
+            set.warmup
+              ? `A warm-up, not a working set. It is ${warmupPctLabel} of the weight you are about to lift, worked out for you and left out of your records and your volume. Tap the pill to turn it into a working set`
+              : reason
+          }
+          label={set.warmup ? 'What a warm-up is' : 'Why this weight'}
+        >
+          <span className="pill">{set.warmup ? `${warmupPctLabel} of your top set` : 'Why'}</span>
+        </InfoPopover>
         <span className="spacer" />
         {set.done && (
           <button
@@ -211,12 +224,36 @@ const ExerciseCard = ({
   const catalog = useAppSelector((s) => s.catalog)
   const settings = useAppSelector((s) => s.settings)
   const [menu, setMenu] = useState(false)
+  const [howTo, setHowTo] = useState(false)
   const [confirmDeleteSet, setConfirmDeleteSet] = useState<string | null>(null)
 
   const last = useMemo(
     () => lastPerformance(sessions, exercise.exerciseId, session.id),
     [sessions, exercise.exerciseId, session.id],
   )
+
+  /**
+   * One tap writes every untouched set: the weight and reps this screen was
+   * already suggesting in grey. Nothing that is logged is touched, and the
+   * button says where the numbers came from before you press it.
+   */
+  const fill = useMemo(
+    () => fillPlanFor({ sessions, settings, catalog }, session, exercise),
+    [sessions, settings, catalog, session, exercise],
+  )
+
+  const applyFill = () => {
+    exercise.sets.forEach((set, i) => {
+      if (set.done) return
+      const next = fill.values[i]
+      dispatch({
+        type: 'updateSet',
+        exId: exercise.id,
+        setId: set.id,
+        patch: { weight: next.weight, reps: next.reps },
+      })
+    })
+  }
 
   // A record is worth knowing about the moment you set it.
   const record = useMemo(
@@ -277,9 +314,12 @@ const ExerciseCard = ({
     dispatch({ type: 'setSets', exId: exercise.id, sets: next })
   }, [exercise, plannedWeight, increment])
 
+  // Working sets only: the rep range never described the warm-up ramp, so
+  // counting the ramp in here advertised eight sets of 8-10 for four of them.
+  const targetSets = workingRows(exercise).length
   const target = exercise.repLow === exercise.repHigh
-    ? `${exercise.sets.length} × ${exercise.repLow}`
-    : `${exercise.sets.length} × ${exercise.repLow}-${exercise.repHigh}`
+    ? `${targetSets} × ${exercise.repLow}`
+    : `${targetSets} × ${exercise.repLow}-${exercise.repHigh}`
 
   const advance = (fromIndex: number) => {
     const next = exercise.sets.find((s, i) => i > fromIndex && !s.done)
@@ -299,8 +339,14 @@ const ExerciseCard = ({
 
   return (
     <section className="card ex-card">
+      <div className="ex-step t-caption label-3">
+        Exercise {index + 1} of {count}
+      </div>
       <div className="ex-head">
-        <span className="ex-name">{exercise.name}</span>
+        <button className="ex-name" onClick={() => setHowTo(true)}>
+          <span className="ex-name-text">{exercise.name}</span>
+          <span className="how-hint" aria-hidden>?</span>
+        </button>
         {record && (
           <span className="pill record" title="Personal record">
             PR
@@ -329,8 +375,34 @@ const ExerciseCard = ({
         {exercise.notes && <div className="t-caption label-2" style={{ marginTop: 3 }}>{exercise.notes}</div>}
       </div>
 
-      {exercise.sets.map((set, i) =>
-        activeSetId === set.id ? (
+      {fill.changes > 0 && (
+        <>
+          <button className="btn-tinted block fill-all" onClick={applyFill}>
+            Fill {fill.changes} {fill.changes === 1 ? 'set' : 'sets'}
+          </button>
+          <div className="t-caption label-3 fill-why">Taken from {fill.source}</div>
+        </>
+      )}
+
+      {exercise.sets.map((set, i) => {
+        const first = i === 0 || exercise.sets[i - 1].warmup !== set.warmup
+        const heading = !first ? null : set.warmup ? (
+          <div className="set-group" key={`h${set.id}`}>
+            Warm-up, {exercise.sets.filter((x) => x.warmup).length} sets, none of it counted
+          </div>
+        ) : (
+          <div className="set-group" key={`h${set.id}`}>
+            Working sets, {workingRows(exercise).length} × {
+              exercise.repLow === exercise.repHigh
+                ? exercise.repLow
+                : `${exercise.repLow}-${exercise.repHigh}`
+            } reps
+          </div>
+        )
+        return (
+          <div key={set.id}>
+          {heading}
+          {activeSetId === set.id ? (
           <SetRow
             key={set.id}
             session={session}
@@ -350,8 +422,10 @@ const ExerciseCard = ({
             onActivate={() => setActiveSetId(set.id)}
             onDone={() => {}}
           />
-        ),
-      )}
+        )}
+          </div>
+        )
+      })}
 
       <div className="row" style={{ marginTop: 8 }}>
         <button className="btn-plain" onClick={() => act.addSet(exercise.id)}>+ Set</button>
@@ -363,6 +437,8 @@ const ExerciseCard = ({
           {exercise.sets.filter((s) => s.done).length}/{exercise.sets.length} done
         </span>
       </div>
+
+      {howTo && <HowToSheet exercise={exercise} onClose={() => setHowTo(false)} />}
 
       {menu && (
         <Sheet title={exercise.name} onClose={() => setMenu(false)}>

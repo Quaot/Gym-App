@@ -71,6 +71,7 @@ export const Home = () => {
         month: 'long',
       })}
       large
+      blurb="Your rotation, and the day that comes next. Start any day you like, since the order here is a suggestion rather than a rule"
     >
         {active && (
           <div className="group">

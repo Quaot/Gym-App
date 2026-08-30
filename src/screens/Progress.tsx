@@ -126,7 +126,13 @@ export const ProgressScreen = () => {
   const monthName = monthStart.toLocaleDateString(undefined, { month: 'long', year: 'numeric' })
 
   return (
-    <Screen id="progress" title="Progress" subtitle={`${finished.length} workouts on record`} large>
+    <Screen
+      id="progress"
+      title="Progress"
+      subtitle={`${finished.length} workouts on record`}
+      large
+      blurb="What your logged sets add up to. Volume by week, a calendar of what you trained, and whether sleep moves your numbers"
+    >
         <SleepQuickLog />
 
         <div className="section-header">Weekly volume ({unit})</div>
