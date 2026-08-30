@@ -142,7 +142,7 @@ export const fillPlanFor = (
   const source = !last
     ? 'the bottom of the rep range, since this is your first time on it'
     : straight
-      ? 'last time, with the increase the app suggests'
+      ? 'last time, one step heavier'
       : 'last time, set for set'
   const from = !last ? 'to start' : 'from last time'
 

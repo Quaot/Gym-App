@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
+import { haptic } from '../lib/haptics'
 
 interface Props {
   /** The sentence to reveal. Kept short enough to read at a glance. */
@@ -73,7 +74,7 @@ export const InfoPopover = ({ content, children, label }: Props) => {
     timer.current = setTimeout(() => {
       if (!moved.current) {
         reveal()
-        navigator.vibrate?.(8)
+        haptic('select')
       }
     }, delay)
   }
