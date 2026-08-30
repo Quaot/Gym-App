@@ -297,6 +297,34 @@ describe('v3 preset data', () => {
     }
   })
 
+  it('leaves the Pull openers on the ramp the programme itself prescribes', () => {
+    // Standardising these to the barbell pyramid would be a tidy-up that
+    // quietly overwrote a prescription, so it is pinned in both splits.
+    const pulldownRamp = [
+      { pct: 0.55, reps: 10 }, { pct: 0.7, reps: 10 }, { pct: 0.85, reps: 10 },
+    ]
+    const pull1 = program.days.find((d) => d.name === 'Pull 1')!
+    expect(pull1.exercises[0].exerciseId).toBe('lat-pulldown')
+    expect(pull1.exercises[0].warmups).toEqual(pulldownRamp)
+
+    const pull = pplul.days.find((d) => d.name === 'Pull')!
+    expect(pull.exercises[0].warmups).toEqual(pulldownRamp)
+
+    // Pull 2 opens on a single-arm cable pulldown, which earns nothing.
+    const pull2 = program.days.find((d) => d.name === 'Pull 2')!
+    expect(pull2.exercises[0].exerciseId).toBe('half-kneeling-single-arm-lat-pulldown')
+    expect(pull2.exercises[0].warmups).toEqual([])
+  })
+
+  it('gives no day more than one exercise with warm-up rows', () => {
+    for (const p of [program, pplul]) {
+      for (const d of p.days) {
+        const ramped = d.exercises.filter((t) => t.warmups.length > 0)
+        expect(ramped.length, d.name).toBeLessThanOrEqual(1)
+      }
+    }
+  })
+
   it('ramps in rising percentages that finish close to the working weight', () => {
     for (const p of [program, pplul]) {
       for (const d of p.days) {

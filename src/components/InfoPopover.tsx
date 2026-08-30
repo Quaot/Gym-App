@@ -15,14 +15,34 @@ const SLOP = 8
 
 /**
  * Detail on demand. The surface stays quiet and the explanation arrives on a
- * long press, or on hover where there is a pointer. Nothing about the layout
- * changes when it opens, so a card never jumps under your thumb.
+ * tap, on a long press, or on hover where there is a pointer. Nothing about
+ * the layout changes when it opens, so a card never jumps under your thumb.
+ *
+ * A tap opens it as well as a hold, because a control that answers only to a
+ * long press is a secret. The hold stays for anything large enough to press
+ * without meaning to open it.
  */
+/** Room a popover needs above its trigger before it has to open downward. */
+const HEADROOM = 170
+
 export const InfoPopover = ({ content, children, label }: Props) => {
   const [open, setOpen] = useState(false)
+  const [below, setBelow] = useState(false)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const moved = useRef(false)
   const origin = useRef<{ x: number; y: number } | null>(null)
+  const wrap = useRef<HTMLSpanElement | null>(null)
+
+  /**
+   * Opens on whichever side has room. A trigger near the top of the screen
+   * would otherwise put its explanation off the top of it, which is how the
+   * set group headings used to read.
+   */
+  const reveal = () => {
+    const box = wrap.current?.getBoundingClientRect()
+    setBelow(box !== undefined && box.top < HEADROOM)
+    setOpen(true)
+  }
 
   const clear = () => {
     if (timer.current !== null) {
@@ -52,7 +72,7 @@ export const InfoPopover = ({ content, children, label }: Props) => {
     moved.current = false
     timer.current = setTimeout(() => {
       if (!moved.current) {
-        setOpen(true)
+        reveal()
         navigator.vibrate?.(8)
       }
     }, delay)
@@ -61,6 +81,18 @@ export const InfoPopover = ({ content, children, label }: Props) => {
   return (
     <span
       className="info-wrap"
+      role="button"
+      tabIndex={0}
+      aria-label={label}
+      ref={wrap}
+      onClick={() => { if (!moved.current) reveal() }}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          if (open) setOpen(false)
+          else reveal()
+        }
+      }}
       onPointerDown={(e) => {
         origin.current = { x: e.clientX, y: e.clientY }
         if (e.pointerType !== 'mouse') start(HOLD_MS)
@@ -83,7 +115,7 @@ export const InfoPopover = ({ content, children, label }: Props) => {
     >
       {children}
       {open && (
-        <span className="info-pop" role="status" aria-label={label}>
+        <span className={`info-pop${below ? ' below' : ''}`} role="status" aria-label={label}>
           {content}
         </span>
       )}

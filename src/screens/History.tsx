@@ -21,7 +21,11 @@ export const HistoryList = () => {
       title="History"
       subtitle={`${finished.length} workouts logged`}
       large
-      blurb="Every workout you have saved, newest first. Open one to see each set exactly as you logged it"
+      help={[
+        'Every workout you have saved, newest first',
+        'Open one to see each set exactly as you logged it, warm-ups included',
+        'Nothing here can be changed, since it is a record of what happened',
+      ]}
     >
         {finished.length === 0 && (
           <div className="empty">Nothing logged yet</div>

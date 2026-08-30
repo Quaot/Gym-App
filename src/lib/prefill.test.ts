@@ -232,4 +232,15 @@ describe('fillPlanFor: what the button would write', () => {
     expect(fillPlanFor(stateWith([lastSession()]), today, today.exercises[0]).source.length)
       .toBeGreaterThan(5)
   })
+
+  it('also says it in few enough words to sit inside the button', () => {
+    // The button reads "Fill 4 sets from last time" and has to hold one line
+    // at 320px, so the short form is capped rather than left to grow.
+    const today = live([set({})])
+    for (const state of [stateWith([]), stateWith([lastSession()])]) {
+      const { from } = fillPlanFor(state, today, today.exercises[0])
+      expect(from.split(' ').length, from).toBeLessThanOrEqual(3)
+      expect(from, from).not.toMatch(/[.,]/)
+    }
+  })
 })

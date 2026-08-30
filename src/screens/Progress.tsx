@@ -131,7 +131,11 @@ export const ProgressScreen = () => {
       title="Progress"
       subtitle={`${finished.length} workouts on record`}
       large
-      blurb="What your logged sets add up to. Volume by week, a calendar of what you trained, and whether sleep moves your numbers"
+      help={[
+        'What your logged sets add up to',
+        'Volume by week, a calendar of what you trained, and whether sleep moves your numbers',
+        'Warm-ups are left out of every number here, so this is the work that counted',
+      ]}
     >
         <SleepQuickLog />
 

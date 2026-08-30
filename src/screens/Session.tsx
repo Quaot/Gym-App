@@ -15,6 +15,7 @@ import { PLATES_KG, PLATES_LB, describePlates, platesFor } from '../lib/plates'
 import { PlateBar } from '../components/PlateBar'
 import { suggestionFor } from '../lib/suggest'
 import { InfoPopover } from '../components/InfoPopover'
+import { WARMUP_RULE, WORKING_RULE } from '../lib/rules'
 import {
   lastPerformance, recordsIn, sessionDoneSetCount, sessionVolume, workingRows, workingSets,
 } from '../lib/history'
@@ -340,7 +341,14 @@ const ExerciseCard = ({
   return (
     <section className="card ex-card">
       <div className="ex-step t-caption label-3">
-        Exercise {index + 1} of {count}
+        <span>Exercise {index + 1} of {count}</span>
+        <button
+          className="btn-plain ex-menu"
+          aria-label={`Options for ${exercise.name}`}
+          onClick={() => setMenu(true)}
+        >
+          ⋯
+        </button>
       </div>
       <div className="ex-head">
         <button className="ex-name" onClick={() => setHowTo(true)}>
@@ -353,9 +361,6 @@ const ExerciseCard = ({
           </span>
         )}
         <span className="pill num">{target}</span>
-        <button className="btn-plain" aria-label={`Options for ${exercise.name}`} onClick={() => setMenu(true)}>
-          ⋯
-        </button>
       </div>
 
       <div className="last-line">
@@ -376,27 +381,32 @@ const ExerciseCard = ({
       </div>
 
       {fill.changes > 0 && (
-        <>
-          <button className="btn-tinted block fill-all" onClick={applyFill}>
-            Fill {fill.changes} {fill.changes === 1 ? 'set' : 'sets'}
-          </button>
-          <div className="t-caption label-3 fill-why">Taken from {fill.source}</div>
-        </>
+        <button className="btn-tinted block fill-all" onClick={applyFill}>
+          Fill {fill.changes} {fill.changes === 1 ? 'set' : 'sets'} {fill.from}
+        </button>
       )}
 
       {exercise.sets.map((set, i) => {
         const first = i === 0 || exercise.sets[i - 1].warmup !== set.warmup
         const heading = !first ? null : set.warmup ? (
           <div className="set-group" key={`h${set.id}`}>
-            Warm-up, {exercise.sets.filter((x) => x.warmup).length} sets, none of it counted
+            <InfoPopover content={WARMUP_RULE} label="What a warm-up set is">
+              <span className="holdable">
+                Warm-up · {exercise.sets.filter((x) => x.warmup).length} sets
+              </span>
+            </InfoPopover>
           </div>
         ) : (
           <div className="set-group" key={`h${set.id}`}>
-            Working sets, {workingRows(exercise).length} × {
-              exercise.repLow === exercise.repHigh
-                ? exercise.repLow
-                : `${exercise.repLow}-${exercise.repHigh}`
-            } reps
+            <InfoPopover content={WORKING_RULE} label="What a working set is">
+              <span className="holdable">
+                Working sets · {workingRows(exercise).length} × {
+                  exercise.repLow === exercise.repHigh
+                    ? exercise.repLow
+                    : `${exercise.repLow}-${exercise.repHigh}`
+                }
+              </span>
+            </InfoPopover>
           </div>
         )
         return (
