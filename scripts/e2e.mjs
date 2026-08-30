@@ -1388,6 +1388,10 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     '28d. and the fill button has no caption under it either')
 
   const warmGroup = page.locator('.set-group').filter({ hasText: 'Warm-up' }).first()
+  // Settle the scroller first: the click would otherwise bring the row into
+  // view and read the popover while the page was still moving.
+  await warmGroup.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(500)
   await warmGroup.locator('.info-wrap').click()
   const popup = page.locator('.info-pop')
   await popup.waitFor()

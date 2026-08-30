@@ -25,6 +25,8 @@ const SLOP = 8
  */
 /** Room a popover needs above its trigger before it has to open downward. */
 const HEADROOM = 170
+/** How long a popover ignores the scroll it may have been opened during. */
+const ARM_MS = 250
 
 export const InfoPopover = ({ content, children, label }: Props) => {
   const [open, setOpen] = useState(false)
@@ -60,9 +62,17 @@ export const InfoPopover = ({ content, children, label }: Props) => {
     // Any tap elsewhere, or a scroll, dismisses it. Scrolling happens inside
     // the screen's own scroller, and a scroll event on a element other than
     // the document does not reach the window, so the listener has to capture.
-    window.addEventListener('pointerdown', close, { once: true })
-    window.addEventListener('scroll', close, { once: true, passive: true, capture: true })
+    //
+    // Armed a beat late on purpose: a press that brought its own row into
+    // view, or one made while the list still had momentum, would otherwise
+    // be dismissed by the scroll it was already riding, and the explanation
+    // you asked for would flash and vanish.
+    const armed = window.setTimeout(() => {
+      window.addEventListener('pointerdown', close, { once: true })
+      window.addEventListener('scroll', close, { once: true, passive: true, capture: true })
+    }, ARM_MS)
     return () => {
+      window.clearTimeout(armed)
       window.removeEventListener('pointerdown', close)
       window.removeEventListener('scroll', close, true)
     }
