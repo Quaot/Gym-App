@@ -8,7 +8,7 @@ import { Sheet } from '../components/Sheet'
 import { HowToSheet } from '../components/HowToSheet'
 import { Screen, forgetScroll, revealAboveBars } from '../app/Screen'
 import { IconCheck, IconTrash } from '../components/icons'
-import { fmtClock, fmtWeight, uid } from '../lib/util'
+import { daysAgo, fmtClock, fmtWeight, plural, uid } from '../lib/util'
 import { fillPlanFor, prefillFor } from '../lib/prefill'
 import { reconcileWarmups } from '../lib/warmups'
 import { PLATES_KG, PLATES_LB, describePlates, platesFor } from '../lib/plates'
@@ -352,7 +352,7 @@ const ExerciseCard = ({
   }
 
   const daysAgoLabel = last
-    ? Math.floor((Date.now() - (last.session.finishedAt ?? last.session.startedAt)) / 86400000)
+    ? daysAgo(last.session.finishedAt ?? last.session.startedAt)
     : null
 
   return (
@@ -412,7 +412,7 @@ const ExerciseCard = ({
           <div className="set-group" key={`h${set.id}`}>
             <InfoPopover content={WARMUP_RULE} label="What a warm-up set is">
               <span className="holdable">
-                Warm-up · {exercise.sets.filter((x) => x.warmup).length} sets
+                Warm-up · {plural(exercise.sets.filter((x) => x.warmup).length, 'set')}
               </span>
             </InfoPopover>
           </div>
@@ -590,7 +590,7 @@ const LiveDuration = ({
   const now = useNow(1000)
   return (
     <span className="num">
-      {fmtClock((now - startedAt) / 1000)} · {sets} of {planned} sets
+      {fmtClock((now - startedAt) / 1000)} · {sets} of {plural(planned, 'set')}
     </span>
   )
 }
@@ -686,7 +686,7 @@ const FillAll = ({ session }: { session: Session }) => {
         }
       }}
     >
-      Fill all {changes} sets
+      Fill all {plural(changes, 'set')}
     </button>
   )
 }

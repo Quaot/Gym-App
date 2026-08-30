@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { calendarDays, dayKey, exerciseTrend, memoized, weekKey, weeklyBuckets } from './analytics'
+import { recordsIn } from './history'
 import { freshState } from '../store/migrate'
 import type { AppState, LoggedSet, Session } from '../types'
 
@@ -38,7 +39,26 @@ describe('exerciseTrend', () => {
     ])
     const trend = exerciseTrend(state, 'bench')
     expect(trend.map((p) => p.score)).toEqual([116.7, 115.5, 129.8])
-    expect(trend.map((p) => p.isPR)).toEqual([true, false, true])
+    // The first session is a baseline, not a record, exactly as recordsIn
+    // treats it during a workout. This expectation changed deliberately: the
+    // chart used to flag it and count one PR too many for every movement.
+    expect(trend.map((p) => p.isPR)).toEqual([false, false, true])
+  })
+
+  it('agrees with the workout screen about what a record is', () => {
+    // Two places decide this: recordsIn during a workout and exerciseTrend on
+    // the chart. They disagreed, so a first session was a PR in one and a
+    // baseline in the other. This pins them together.
+    const one = withSessions([sessionAt(at('2026-06-01T10:00Z'), 'bench', [done(100, 5)])])
+    expect(exerciseTrend(one, 'bench').map((p) => p.isPR)).toEqual([false])
+    expect(recordsIn(one, one.sessions[0]).size).toBe(0)
+
+    const two = withSessions([
+      sessionAt(at('2026-06-01T10:00Z'), 'bench', [done(100, 5)]),
+      sessionAt(at('2026-06-08T10:00Z'), 'bench', [done(110, 5)]),
+    ])
+    expect(exerciseTrend(two, 'bench').map((p) => p.isPR)).toEqual([false, true])
+    expect(recordsIn(two, two.sessions[1]).size).toBe(1)
   })
 
   it('ranks the best set within a session, not the last one', () => {
@@ -58,7 +78,7 @@ describe('exerciseTrend', () => {
     expect(state.catalog['pull-up'].bodyweight).toBe(true)
     const trend = exerciseTrend(state, 'pull-up')
     expect(trend.map((p) => p.score)).toEqual([8, 10])
-    expect(trend.map((p) => p.isPR)).toEqual([true, true])
+    expect(trend.map((p) => p.isPR)).toEqual([false, true])
   })
 
   it('is oldest-first and skips sessions without the exercise', () => {

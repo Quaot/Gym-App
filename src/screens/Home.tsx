@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { navigate } from '../lib/router'
 import { useAppSelector, dispatch } from '../store/store'
 import { act } from '../store/actions'
-import { fmtDate, fmtDuration } from '../lib/util'
+import { fmtDate, fmtDuration, plural, pluralize } from '../lib/util'
 import { finishedSessions, sessionSetCount, sessionVolume } from '../lib/history'
 import type { DayTemplate, Session } from '../types'
 import { Sheet } from '../components/Sheet'
@@ -90,7 +90,7 @@ export const Home = () => {
               </div>
               <div className="value num">
                 {sessionSetCount(active)}
-                <span className="unit">sets logged</span>
+                <span className="unit">{pluralize(sessionSetCount(active), 'set')} logged</span>
               </div>
             </button>
           </div>
@@ -108,7 +108,7 @@ export const Home = () => {
               </div>
               <div className="value num">
                 {sessionSetCount(s)}
-                <span className="unit">sets, never finished</span>
+                <span className="unit">{pluralize(sessionSetCount(s), 'set')}, never finished</span>
               </div>
             </button>
           </div>
@@ -124,12 +124,12 @@ export const Home = () => {
                   <IconDumbbell />
                   <span className="name">{next.name}</span>
                   <span className="when">
-                    {next.exercises.length === 0 ? 'Empty' : `${next.exercises.length} exercises`}
+                    {next.exercises.length === 0 ? 'Empty' : plural(next.exercises.length, 'exercise')}
                   </span>
                 </div>
                 <div className="value num">
                   {next.exercises.reduce((n, e) => n + e.sets, 0)}
-                  <span className="unit">sets planned</span>
+                  <span className="unit">{pluralize(next.exercises.reduce((n, e) => n + e.sets, 0), 'set')} planned</span>
                 </div>
               </button>
               {next.exercises.length === 0 ? (

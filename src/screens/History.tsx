@@ -4,7 +4,7 @@ import { navigate, replaceRoute } from '../lib/router'
 import { Sheet } from '../components/Sheet'
 import { Screen } from '../app/Screen'
 import { BackButton } from '../app/BackButton'
-import { fmtClock, fmtDate, fmtDuration, fmtSet } from '../lib/util'
+import { fmtClock, fmtDate, fmtDuration, fmtSet, plural } from '../lib/util'
 import {
   finishedSessions, sessionSetCount, sessionVolume, workingSets, warmupSets,
 } from '../lib/history'
@@ -19,7 +19,7 @@ export const HistoryList = () => {
     <Screen
       id="history"
       title="History"
-      subtitle={`${finished.length} workouts logged`}
+      subtitle={`${plural(finished.length, 'workout')} logged`}
       large
       help={[
         'Every workout you have saved, newest first',
@@ -36,7 +36,7 @@ export const HistoryList = () => {
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontWeight: 650 }}>{s.dayName}</div>
               <div className="t-footnote label-2 num">
-                {fmtDate(s.finishedAt ?? s.startedAt)} · {sessionSetCount(s)} sets ·{' '}
+                {fmtDate(s.finishedAt ?? s.startedAt)} · {plural(sessionSetCount(s), 'set')} ·{' '}
                 {fmtDuration((s.finishedAt ?? s.startedAt) - s.startedAt)} ·{' '}
                 {Math.round(sessionVolume(s)).toLocaleString()} {unit}
               </div>

@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react'
+import { plural } from '../lib/util'
 
 /**
  * Hand-rolled SVG charts, per the house dataviz rules: 2px lines with a ~10%
@@ -96,7 +97,7 @@ export const LineChart = ({
     <div ref={ref}>
       <svg
         width="100%" height={height} viewBox={`0 0 ${Math.max(120, width)} ${height}`}
-        role="img" aria-label={`Trend of ${points.length} sessions`}
+        role="img" aria-label={`Trend of ${plural(points.length, 'session')}`}
         onPointerMove={onMove} onPointerLeave={() => setScrub(null)} onPointerDown={onMove}
         style={{ touchAction: 'pan-y' }}
       >
@@ -325,7 +326,7 @@ export const Scatter = ({
   return (
     <div ref={ref}>
       <svg width="100%" height={height} viewBox={`0 0 ${Math.max(120, width)} ${height}`} role="img"
-        aria-label={`Scatter of ${points.length} sessions`}>
+        aria-label={`Scatter of ${plural(points.length, 'session')}`}>
         {niceTicks(yMin - yPad, yMax + yPad, 3).map((v) => (
           <g key={v}>
             <line x1={pad.l} x2={pad.l + w} y1={Y(v)} y2={Y(v)} stroke={GRID} strokeWidth={1} />

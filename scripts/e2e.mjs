@@ -684,6 +684,12 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   const offenders = []
   const periods = []
+  const plurals = []
+  // "1 sets" and "1 exercises" were on screen in nine places. These are the
+  // nouns the app actually counts, so the check cannot fire on prose.
+  // The number and its unit are separate elements, so innerText runs them
+  // together as "1sets": the space has to be optional or this never fires.
+  const COUNTED = /\b1\s*(sets|reps|exercises|workouts|sessions|days|nights|weeks|records|splits|programs)\b/
   for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
     await page.locator('.tabbar').getByRole('button', { name: tab }).click()
     await page.waitForTimeout(250)
@@ -692,6 +698,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
       if (/[—–]/.test(line) || / - /.test(line)) offenders.push(`${tab}: ${line}`)
       // House rule: nothing on screen closes with a period.
       if (/[a-z0-9)\]]\.$/.test(line.trim())) periods.push(`${tab}: ${line}`)
+      if (COUNTED.test(line)) plurals.push(`${tab}: ${line}`)
     }
   }
   // The workout screen carries the day notes, so it gets scanned too.
@@ -703,10 +710,24 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   for (const line of sessionText.split('\n')) {
     if (/[—–]/.test(line) || / - /.test(line)) offenders.push(`Workout: ${line}`)
     if (/[a-z0-9)\]]\.$/.test(line.trim())) periods.push(`Workout: ${line}`)
+    if (COUNTED.test(line)) plurals.push(`Workout: ${line}`)
+  }
+
+  // Counts of one are where the copy broke, so put the app in that state and
+  // read every screen again: one set logged, on one unfinished workout.
+  await page.locator('.complete').first().click()
+  await page.waitForTimeout(300)
+  for (const tab of ['Today', 'Program', 'Progress', 'History', 'Settings']) {
+    await page.locator('.tabbar').getByRole('button', { name: tab }).click()
+    await page.waitForTimeout(250)
+    for (const line of (await page.locator('body').innerText()).split('\n')) {
+      if (COUNTED.test(line)) plurals.push(`${tab} with one of everything: ${line}`)
+    }
   }
 
   assert(offenders.length === 0, '18a. rendered copy carries no dashes', offenders.join(' | '))
   assert(periods.length === 0, '18b. rendered copy closes no line with a period', periods.join(' | '))
+  assert(plurals.length === 0, '18c. and never says "1 sets"', plurals.join(' | '))
   await ctx.close()
 }
 
