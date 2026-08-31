@@ -74,6 +74,20 @@ node scripts/ios-assets.mjs   # writes into ios/App/App/Assets.xcassets
 It drives whatever Chrome the machine already has, so building the app needs no
 extra npm dependency.
 
+## A note on the lockfile
+
+CI installs with `npm ci` on Node 20. Node 22 and later ship an npm whose
+resolver hoists `vitest`'s nested esbuild to the top of the tree and drops the
+`optional` flag on its platform binaries as it goes, which `npm ci` on Linux
+then refuses. `.nvmrc` pins 20 for that reason. If you add a dependency on a
+newer Node, regenerate the lockfile with the version CI uses:
+
+```bash
+npx npm@10 install --package-lock-only
+```
+
+No `@esbuild/*` entry should come out of that without `"optional": true`.
+
 ## Regenerating the project
 
 `ios/` is checked in and meant to be edited: signing settings and anything else
