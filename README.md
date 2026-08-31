@@ -4,8 +4,9 @@ A phone-first workout tracker: log sets with one thumb on custom tape sliders,
 see exactly what you lifted last time, watch a month or a year of progress, and
 find out whether sleep actually moves your numbers.
 
-Installable web app (PWA). Everything runs on your device and works with no
-signal. Nothing is uploaded, no accounts, nothing to pay for.
+Installable web app (PWA), and an iPhone app built from the same source.
+Everything runs on your device and works with no signal. Nothing is uploaded,
+no accounts, nothing to pay for.
 
 ## How it behaves as an app
 
@@ -23,7 +24,9 @@ launch screen.
   and it goes. The keyboard lifts a sheet instead of burying it
 - **The screen stays awake** for the whole workout
 - **Rest alerts** reach you when you have looked away, once you turn them on in
-  Settings. Notifications need the app on your Home Screen
+  Settings. As a web app these need it on your Home Screen and only land while
+  the page is still alive; the iPhone build hands the deadline to iOS instead,
+  so the alert arrives whatever you are doing
 - **New York** carries the titles and every number, and SF carries the rest
 - **A colour per section**: Today blue, the workout purple, Program orange,
   Progress teal, History indigo, Settings graphite
@@ -118,6 +121,7 @@ npm test           # 307 unit tests: migration chain, reducer invariants,
                    #   navigation gestures, rest alerts
 npm run build      # production build into dist/
 npm run preview    # serve the production build on :4173
+npm run ios:open   # build the iPhone app and open it in Xcode
 node scripts/e2e.mjs   # 106-assertion Playwright suite against the preview:
                    #   migration, poisoned storage, the workout loop, tape
                    #   gestures including fast drags, rest-timer persistence,
@@ -130,6 +134,13 @@ node scripts/e2e.mjs   # 106-assertion Playwright suite against the preview:
 Icons and launch screens are drawn by `node scripts/assets.mjs`, so the whole
 set shares one palette.
 
+The iPhone app is the same source in a Capacitor shell, and everything it
+needs lives under `native/`, described in [native/README.md](native/README.md).
+Rest alerts, the screen staying awake and haptics each take a native path there
+and the web path everywhere else; the browser build carries none of it, since
+the bridge is loaded only on demand and kept out of the service worker's
+precache.
+
 Architecture notes: a framework-free store (`useSyncExternalStore` + pure
 reducer; all ids/timestamps injected by action creators), per-slice persistence,
 decoder-validated state with a v1 to v4 migration chain, hand-rolled SVG
@@ -137,6 +148,10 @@ charts, and a Web Worker plus fflate for the Health import. The only runtime
 dependencies are React and fflate.
 
 ## Deploying
+
+Two ways to end up with it on a Home Screen. As an app signed with your own
+Apple developer account, which is [native/README.md](native/README.md), or as
+the PWA below.
 
 Pushing to `main` builds and publishes to GitHub Pages via
 `.github/workflows/deploy.yml` (unit tests gate the deploy). Enable it once
