@@ -1,17 +1,20 @@
 /**
- * Haptics, on the two paths a web app has.
+ * Haptics, on the three paths this app has.
  *
- * Android and desktop Chrome expose the vibration API, so a pattern in
- * milliseconds is all it takes. Safari on iPhone exposes nothing at all, and
- * the one thing that does reach the Taptic Engine from a page is the switch
- * control Safari added in 17.4: toggling one plays the system tick. So a
- * hidden switch sits offscreen and gets clicked when there is no vibration
- * API to use instead.
+ * The native shell reaches the Taptic Engine properly, so each kind gets the
+ * feel it was named for. Android and desktop Chrome expose the vibration API,
+ * so a pattern in milliseconds is all it takes. Safari on iPhone exposes
+ * nothing at all, and the one thing that does reach the Taptic Engine from a
+ * page is the switch control Safari added in 17.4: toggling one plays the
+ * system tick. So a hidden switch sits offscreen and gets clicked when there
+ * is neither a native bridge nor a vibration API to use instead.
  *
  * Every path is best effort and silent. A device that gives no feedback is
  * the normal case, not an error, and nothing here may ever throw into a
  * caller that was only trying to acknowledge a tap.
  */
+
+import { isNative } from './native'
 
 export type Haptic =
   /** A detent on a wheel, or a value ticking past. The lightest thing there is. */
@@ -44,6 +47,42 @@ export const setHapticsEnabled = (on: boolean): void => {
 }
 
 export const hapticsEnabled = (): boolean => enabled
+
+/* ------------------------------------------------------------------ *
+ * The native path: the Taptic Engine, addressed by name.
+ * ------------------------------------------------------------------ */
+
+const bridge = () => import('@capacitor/haptics')
+
+/**
+ * Plays a kind through the native engine. Fired and forgotten: the import
+ * resolves long before your thumb has left the screen on every call after the
+ * first, and a rejection means one tap went unacknowledged.
+ */
+const nativeHaptic = (kind: Haptic): void => {
+  void bridge()
+    .then(({ Haptics, ImpactStyle, NotificationType }) => {
+      switch (kind) {
+        case 'tick':
+          return Haptics.impact({ style: ImpactStyle.Light })
+        case 'select':
+          return Haptics.impact({ style: ImpactStyle.Medium })
+        case 'success':
+          return Haptics.notification({ type: NotificationType.Success })
+        case 'record':
+          // A record earns the weight of a success and a thump under it.
+          return Haptics.impact({ style: ImpactStyle.Heavy }).then(() =>
+            Haptics.notification({ type: NotificationType.Success }),
+          )
+        case 'warn':
+          return Haptics.notification({ type: NotificationType.Warning })
+        case 'alert':
+          // Rest running out has to survive a pocket, which no tap does.
+          return Haptics.vibrate({ duration: 300 })
+      }
+    })
+    .catch(() => undefined)
+}
 
 /* ------------------------------------------------------------------ *
  * The iPhone path: a switch nobody sees, clicked for its tick.
@@ -88,6 +127,10 @@ const canVibrate = (): boolean =>
 export const haptic = (kind: Haptic = 'select'): void => {
   if (!enabled) return
   try {
+    if (isNative()) {
+      nativeHaptic(kind)
+      return
+    }
     if (canVibrate()) {
       navigator.vibrate(PATTERN[kind])
       return
