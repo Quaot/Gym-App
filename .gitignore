@@ -5,3 +5,6 @@ dist-ssr
 .DS_Store
 dev-dist
 tsconfig.tsbuildinfo
+
+# The native shell's copy of the web build; regenerate with `npm run build:ios`
+native/www

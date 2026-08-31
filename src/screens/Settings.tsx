@@ -1,4 +1,4 @@
-import { useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useAppSelector, dispatch, getStore } from '../store/store'
 import { Sheet } from '../components/Sheet'
 import { downloadFile } from '../lib/download'
@@ -7,21 +7,27 @@ import { isStorageHealthy, persistAll, subscribeStorageHealth } from '../store/p
 import { fmtClock } from '../lib/util'
 import type { Unit } from '../types'
 import { SleepImportCard } from './SleepImport'
-import { askForNotifications, notificationsSupported } from '../lib/notify'
+import {
+  askForNotifications,
+  notificationPermission,
+  refreshNotificationPermission,
+} from '../lib/notify'
 import { Screen } from '../app/Screen'
 import { navigate } from '../lib/router'
 import { generateDemoData, DEMO_PREFIX } from '../lib/demo'
 import { InfoPopover } from '../components/InfoPopover'
 import { weighedSetCount } from '../lib/units'
+import { isNative } from '../lib/native'
 
 const useStorageHealthy = () =>
   useSyncExternalStore(subscribeStorageHealth, isStorageHealthy)
 
 /** Alerts for a rest that runs out while you are looking at something else. */
 const RestAlerts = () => {
-  const [state, setState] = useState(
-    notificationsSupported() ? Notification.permission : 'unsupported',
-  )
+  const [state, setState] = useState(notificationPermission)
+  // iOS answers asynchronously, and the answer can change in system settings
+  // while the app is closed, so the screen asks again on the way in.
+  useEffect(() => { void refreshNotificationPermission().then(setState) }, [])
   if (state === 'unsupported') return null
   if (state === 'granted') {
     return <span className="t-footnote label-2">Rest alerts are on</span>
@@ -29,7 +35,7 @@ const RestAlerts = () => {
   if (state === 'denied') {
     return (
       <span className="t-footnote label-2">
-        Rest alerts are blocked in your browser settings
+        Rest alerts are blocked in your settings
       </span>
     )
   }
@@ -266,7 +272,9 @@ export const SettingsScreen = () => {
         <div className="section-header">Your data</div>
         <div className="group stack" style={{ padding: 14 }}>
           <p className="t-caption label-3">
-            Everything stays on this device, and clearing site data erases it
+            {isNative()
+              ? 'Everything stays on this device, and deleting the app erases it'
+              : 'Everything stays on this device, and clearing site data erases it'}
           </p>
           <button className="btn-gray block" onClick={exportBackup}>Export backup</button>
           <button className="btn-gray block" onClick={() => fileRef.current?.click()}>Import backup</button>
