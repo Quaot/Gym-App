@@ -3,7 +3,7 @@ import { useAppSelector, dispatch } from '../store/store'
 import { useNow } from '../lib/useNow'
 import { fmtClock } from '../lib/util'
 import { chime } from '../lib/audio'
-import { notifyRestOver } from '../lib/notify'
+import { cancelRestAlert, notifyRestOver, scheduleRestAlert } from '../lib/notify'
 import { useWakeLock } from '../lib/wakeLock'
 import { navigate, useRoute } from '../lib/router'
 import { haptic } from '../lib/haptics'
@@ -43,6 +43,17 @@ export const RestBar = () => {
       haptic('alert')
     }
   }, [rest, now])
+
+  // The native shell has to hand iOS the deadline while it is still awake,
+  // since nothing in here runs once the app is in your pocket. Skipping rest,
+  // or extending it, takes the old one back before the new one goes out.
+  const endsAt = rest?.endsAt
+  const exerciseName = rest?.exerciseName
+  useEffect(() => {
+    if (endsAt === undefined) return
+    scheduleRestAlert(endsAt, exerciseName ?? '')
+    return () => cancelRestAlert()
+  }, [endsAt, exerciseName])
 
   const onSession = route[0] === 'session'
 
