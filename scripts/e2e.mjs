@@ -49,10 +49,10 @@ const newPage = async (viewport = { width: 390, height: 844 }) => {
 
 const readState = (page) =>
   page.evaluate(() => ({
-    core: JSON.parse(localStorage.getItem('gym:v5:core') ?? 'null'),
-    sessions: JSON.parse(localStorage.getItem('gym:v5:sessions') ?? '[]'),
-    sleep: JSON.parse(localStorage.getItem('gym:v5:sleep') ?? '[]'),
-    rest: JSON.parse(localStorage.getItem('gym:v5:rest') ?? 'null'),
+    core: JSON.parse(localStorage.getItem('gym:v6:core') ?? 'null'),
+    sessions: JSON.parse(localStorage.getItem('gym:v6:sessions') ?? '[]'),
+    sleep: JSON.parse(localStorage.getItem('gym:v6:sleep') ?? '[]'),
+    rest: JSON.parse(localStorage.getItem('gym:v6:rest') ?? 'null'),
   }))
 
 const flushStorage = (page) =>
@@ -139,7 +139,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   const v1 = JSON.parse(v1Fixture)
   const state = await readState(page)
-  assert(state.core?.version === 5, '1. v1 blob migrates all the way to the v5 keys')
+  assert(state.core?.version === 6, '1. v1 blob migrates all the way to the v6 keys')
   assert(
     await page.evaluate(() => localStorage.getItem('gym-app:state:v1')) === null,
     '1. old key removed after migration',
@@ -170,7 +170,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
     // time of a *valid* envelope: decode repairs this, so instead poison the
     // renderer path via an unparsable core that forces the fresh-state path…
     // …which never throws. So simulate the true worst case: a render crash.
-    localStorage.setItem('gym:v5:core', '{"version":5') // truncated JSON
+    localStorage.setItem('gym:v6:core', '{"version":6') // truncated JSON
   })
   await page.reload()
   await ready(page)
@@ -178,7 +178,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Force a genuine render crash to exercise the ErrorBoundary itself.
   await page.evaluate(() => {
-    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v6:sessions', JSON.stringify([{
       id: 'x', startedAt: 1, finishedAt: 2, dayName: 'D', dayNotes: '', notes: '',
       exercises: [], programId: null, dayId: null,
     }]))
@@ -412,7 +412,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
         }],
       })
     }
-    localStorage.setItem('gym:v5:sessions', JSON.stringify(sessions))
+    localStorage.setItem('gym:v6:sessions', JSON.stringify(sessions))
   })
   await page.reload()
   await ready(page)
@@ -508,7 +508,7 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.reload()
   await ready(page)
   await page.evaluate(() => {
-    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v6:sessions', JSON.stringify([{
       id: 'orphan1', programId: null, dayId: null, dayName: 'Push 1', dayNotes: '', notes: '',
       startedAt: Date.now() - 86400000, finishedAt: null,
       exercises: [{
@@ -557,10 +557,10 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Seed one topped bench session so the engine has a weight to plan from.
   await page.evaluate(() => {
-    const core = JSON.parse(localStorage.getItem('gym:v5:core'))
+    const core = JSON.parse(localStorage.getItem('gym:v6:core'))
     const day = core.programs[0].days[0]
     const t = Date.now() - 3 * 86400000
-    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v6:sessions', JSON.stringify([{
       id: 'seed', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
       dayNotes: day.notes, startedAt: t - 3600000, finishedAt: t, notes: '',
       exercises: [{
@@ -924,10 +924,10 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
 
   // Seed a bench session so today can beat it.
   await page.evaluate(() => {
-    const core = JSON.parse(localStorage.getItem('gym:v5:core'))
+    const core = JSON.parse(localStorage.getItem('gym:v6:core'))
     const day = core.programs[0].days[0]
     const t = Date.now() - 3 * 86400000
-    localStorage.setItem('gym:v5:sessions', JSON.stringify([{
+    localStorage.setItem('gym:v6:sessions', JSON.stringify([{
       id: 'past', programId: core.programs[0].id, dayId: day.id, dayName: day.name,
       dayNotes: '', startedAt: t - 3600000, finishedAt: t, notes: '',
       exercises: [{
@@ -1601,6 +1601,62 @@ const dragTapeFast = async (page, tape, px, moves = 30) => {
   await page.waitForTimeout(500)
   assert(page.url().includes('/program/'), '32e. tapping a day name opens the day', page.url())
   assert(errors.length === 0, '32. no console errors', errors.join('; '))
+  await ctx.close()
+}
+
+/* ================================================================== *
+ * 33. A dumbbell moves in the jump a dumbbell actually makes
+ * ================================================================== */
+{
+  const { ctx, page, errors } = await newPage()
+  await page.goto(BASE)
+  await page.evaluate(() => localStorage.clear())
+  await page.reload()
+  await ready(page)
+
+  // Every catalog entry should carry the step its equipment implies, and a
+  // dumbbell's used to be ten pounds, the same as a machine stack.
+  await flushStorage(page)
+  const fresh = await readState(page)
+  const byKind = (kind) => Object.values(fresh.core.catalog).filter((e) => e.equipment === kind)
+  const dumbbells = byKind('dumbbell')
+  assert(dumbbells.length > 0, '33a. the catalog knows which lifts are dumbbells',
+    `${dumbbells.length}`)
+  const wrong = dumbbells.filter((e) => e.increment !== 2.5)
+  assert(wrong.length === 0, '33b. and every one of them steps by 2.5',
+    wrong.map((e) => `${e.name}=${e.increment}`).join(', '))
+  const stacks = byKind('machine').filter((e) => e.increment !== 10)
+  assert(stacks.length === 0, '33c. while a stack is left on 10',
+    stacks.map((e) => `${e.name}=${e.increment}`).join(', '))
+
+  // And the wheel has to move by it, since that is where you feel it.
+  await page.locator('.tabbar').getByRole('button', { name: 'Today' }).click()
+  await page.waitForTimeout(250)
+  await page.getByRole('button', { name: 'Start', exact: true }).first().click()
+  await page.waitForSelector('.ex-card')
+  // A dumbbell lift is not one with "dumbbell" in its name: Push 1's is the
+  // Standing Arnold Press. Find it by what the catalog says it is.
+  const dumbbellNames = new Set(dumbbells.map((e) => e.name))
+  const names = await page.locator('.ex-card .ex-name-text').allInnerTexts()
+  const which = names.findIndex((n) => dumbbellNames.has(n.trim()))
+  assert(which >= 0, '33d. this day has a dumbbell lift to check', names.join(', '))
+
+  const card = page.locator('.ex-card').nth(which)
+  await card.locator('.set-line, .set-editor').first().click()
+  await page.waitForTimeout(400)
+  const editor = card.locator('.set-editor')
+  await editor.waitFor()
+  // Read the committed number off the readout rather than the strip, whose
+  // tick labels are also digits.
+  const readout = editor.locator('.tape .readout .big').first()
+  const read = async () => Number((await readout.innerText()).replace(/[^0-9.]/g, ''))
+  const before = await read()
+  await editor.getByRole('button', { name: 'Weight up' }).click()
+  await page.waitForTimeout(350)
+  const after = await read()
+  assert(Math.abs((after - before) - 2.5) < 0.01,
+    '33e. one press of the weight stepper moves it 2.5', `${before} -> ${after}`)
+  assert(errors.length === 0, '33. no console errors', errors.join('; '))
   await ctx.close()
 }
 
