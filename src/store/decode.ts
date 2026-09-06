@@ -1,7 +1,7 @@
 import type {
   AppState, DayTemplate, Equipment, Exercise, ExerciseTemplate, LoggedSet,
   Program, RestState, Session, SessionExercise, Settings, SleepEntry,
-  WarmupStep,
+  Unit, WarmupStep,
 } from '../types'
 import { SCHEMA_VERSION } from '../types'
 import { defaultIncrement, makeExercise } from '../lib/catalog'
@@ -47,7 +47,11 @@ const fallbackId = () => `repaired-${Date.now().toString(36)}-${fallbackCounter+
 
 const EQUIPMENT: Equipment[] = ['barbell', 'dumbbell', 'machine', 'cable', 'bodyweight']
 
-const decodeExercise = (v: unknown): Exercise | null => {
+/**
+ * `unit` is the one already decoded from settings, not a guess. Defaulting to
+ * pounds here handed a kilo lifter a pound increment on anything they added.
+ */
+const decodeExercise = (v: unknown, unit: Unit): Exercise | null => {
   if (!isObj(v)) return null
   const id = idOf(v.id)
   const name = str(v.name, '').trim()
@@ -58,13 +62,14 @@ const decodeExercise = (v: unknown): Exercise | null => {
     : bodyweight
       ? 'bodyweight'
       : 'machine'
-  const increment = num(v.increment, defaultIncrement(equipment, 'lb'))
+  const fallbackStep = defaultIncrement(equipment, unit)
+  const increment = num(v.increment, fallbackStep)
   return {
     id,
     name,
     bodyweight,
     equipment,
-    increment: increment > 0 ? increment : defaultIncrement(equipment, 'lb'),
+    increment: increment > 0 ? increment : fallbackStep,
     archived: bool(v.archived, false),
   }
 }
@@ -233,8 +238,11 @@ export const decodeAppState = (
 ): AppState => {
   const v = isObj(raw) ? raw : {}
 
+  // Settings lead: the catalog's increments depend on the unit they are in.
+  const settings = decodeSettings(v.settings)
+
   const catalogEntries = isObj(v.catalog)
-    ? arrOf(Object.values(v.catalog), decodeExercise)
+    ? arrOf(Object.values(v.catalog), (e) => decodeExercise(e, settings.unit))
     : []
   let catalog: Record<string, Exercise> = {}
   for (const e of catalogEntries) catalog[e.id] = e
@@ -260,7 +268,7 @@ export const decodeAppState = (
   for (const s of sessions) {
     for (const e of s.exercises) {
       if (!e.exerciseId || !catalog[e.exerciseId]) {
-        const adopted = makeExercise(e.name)
+        const adopted = makeExercise(e.name, undefined, settings.unit)
         catalog[adopted.id] ??= adopted
         e.exerciseId = adopted.id
       }
@@ -288,6 +296,6 @@ export const decodeAppState = (
     activeSessionId,
     rest: decodeRest(v.rest),
     sleep,
-    settings: decodeSettings(v.settings),
+    settings,
   }
 }

@@ -37,6 +37,10 @@ const guessEquipment = (name: string, id: ID): Equipment => {
 }
 
 export const defaultIncrement = (equipment: Equipment, unit: Unit): number => {
+  // Dumbbells move in the smallest jump of anything here. A stack steps by
+  // ten and a bar by five, but ten pounds on an Arnold press is a third of
+  // the working weight, which is a jump nobody makes in one session.
+  if (equipment === 'dumbbell') return unit === 'lb' ? 2.5 : 1.25
   if (unit === 'lb') return equipment === 'barbell' || equipment === 'bodyweight' ? 5 : 10
   return equipment === 'barbell' || equipment === 'bodyweight' ? 2.5 : 5
 }

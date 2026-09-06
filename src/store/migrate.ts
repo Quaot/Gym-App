@@ -1,6 +1,6 @@
 import type { AppState, DayTemplate, Program, Unit, WarmupStep } from '../types'
 import { decodeAppState } from './decode'
-import { resolveExercise } from '../lib/catalog'
+import { defaultIncrement, resolveExercise } from '../lib/catalog'
 import {
   pplProgram, pplulProgram, presetCatalog, presetTemplateMeta, setPresetUnit,
 } from '../lib/presets'
@@ -262,6 +262,39 @@ export const migrateV4 = (raw: unknown): AppState => {
   }))
 
   return { ...state, programs }
+}
+
+/* ------------------------------------------------------------------ *
+ * v5 -> v6: increments follow the equipment again.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Recomputes every catalog increment from its equipment and your unit.
+ *
+ * An increment is written into a catalog entry when the entry is first made
+ * and nothing has ever recomputed it, so a change to defaultIncrement reached
+ * a fresh install and never reached a phone. Dumbbells moving from ten pounds
+ * to two and a half is exactly that change, and this is what carries it.
+ *
+ * Recomputing the lot is safe because an increment is derived rather than
+ * chosen: no screen in the app lets you set one, so there is no preference
+ * here to overwrite. It also repairs anything stored under the wrong unit,
+ * which decodeExercise used to hand out by defaulting to pounds.
+ *
+ * Idempotent: an entry already holding the right increment is returned as is.
+ */
+export const migrateV5 = (raw: unknown): AppState => {
+  const state = decodeV2(raw)
+  const unit = state.settings.unit
+
+  const catalog = Object.fromEntries(
+    Object.entries(state.catalog).map(([id, e]) => {
+      const want = defaultIncrement(e.equipment, unit)
+      return [id, e.increment === want ? e : { ...e, increment: want }]
+    }),
+  )
+
+  return { ...state, catalog }
 }
 
 export const freshState = (): AppState => {
