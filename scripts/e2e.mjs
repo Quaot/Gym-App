@@ -14,7 +14,9 @@ import path from 'node:path'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
 const BASE = process.env.E2E_URL ?? 'http://127.0.0.1:4173/Gym-App/'
-const EXEC = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+// Playwright's own Chromium unless you point CHROME_PATH at another one;
+// the browser it installs is the one it was tested against.
+const EXEC = process.env.CHROME_PATH
 const SHOT_DIR = process.env.E2E_SHOTS ?? '/tmp/e2e-shots'
 
 const v1Fixture = readFileSync(path.join(ROOT, 'test-fixtures/v1-state.json'), 'utf8')

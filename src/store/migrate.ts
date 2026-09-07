@@ -1,4 +1,5 @@
 import type { AppState, DayTemplate, Program, Unit, WarmupStep } from '../types'
+import { SCHEMA_VERSION } from '../types'
 import { decodeAppState } from './decode'
 import { defaultIncrement, resolveExercise } from '../lib/catalog'
 import {
@@ -295,6 +296,58 @@ export const migrateV5 = (raw: unknown): AppState => {
   )
 
   return { ...state, catalog }
+}
+
+/* ------------------------------------------------------------------ *
+ * Entering the chain part way.
+ * ------------------------------------------------------------------ */
+
+/** Each step, keyed by the version it reads. Adding a schema adds a row. */
+const STEPS: Record<number, (raw: unknown) => AppState> = {
+  1: migrateV1,
+  2: migrateV2,
+  3: migrateV3,
+  4: migrateV4,
+  5: migrateV5,
+}
+
+/**
+ * Runs every migration from `from` up to the current schema, in order, and
+ * decodes anything already current. This is the one place the chain is
+ * spelled out, so storage and a backup file cannot drift apart on how far
+ * a given version has to travel.
+ */
+export const migrateFrom = (from: number, raw: unknown): AppState => {
+  if (from >= SCHEMA_VERSION) return decodeV2(raw)
+  let state: unknown = raw
+  for (let v = Math.max(1, from); v < SCHEMA_VERSION; v++) {
+    const step = STEPS[v]
+    if (!step) throw new Error(`No migration reads schema ${v}`)
+    state = step(state)
+  }
+  return state as AppState
+}
+
+/**
+ * A backup file, entered into the chain at the version it says it is.
+ *
+ * A backup is a snapshot of the state as it stood, and it stands at whatever
+ * schema the app had when you exported it. Decoding it directly, as import
+ * used to, read every stored value as current and skipped the migrations in
+ * between, so a file from before the dumbbell change put ten pound steps
+ * back on a phone that had just been moved off them, and since the keys were
+ * already current, nothing ever moved them again.
+ *
+ * A file with no version is either the single-program v1 shape or something
+ * hand-edited; the latter takes the whole chain from v2, every step of which
+ * leaves a current state alone.
+ */
+export const migrateBackup = (raw: unknown): AppState => {
+  if (!isObj(raw)) return decodeV2(raw)
+  const version = typeof raw.version === 'number' && Number.isFinite(raw.version)
+    ? Math.floor(raw.version)
+    : isObj(raw.program) && !Array.isArray(raw.programs) ? 1 : 2
+  return migrateFrom(version, raw)
 }
 
 export const freshState = (): AppState => {

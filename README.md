@@ -84,9 +84,10 @@ Double progression, sized to the equipment in front of you.
 Hold the weight and add reps until every working set reaches the top of the
 range. Then the app measures what the smallest available jump costs as a share
 of the load. On a 185 lb bench, 5 lb is under 3%, so it takes the jump and
-expects you to land a rep lower. On a 30 lb lateral raise the smallest jump is
-a third of the load, so it refuses and widens the rep range instead, until the
-jump lands back inside the range.
+expects you to land a rep lower. On a 15 lb lateral raise the smallest jump is
+2.5 lb, a sixth of the load, so it refuses and widens the rep range instead,
+until the jump lands back inside the range. By 25 lb the same jump is a tenth,
+and it takes it.
 
 That is why compound and isolation are not hard-coded. The deciding number is
 the jump percentage, which also means a belt on a pull-up progresses like a
@@ -114,15 +115,15 @@ is covered by tests in `src/lib/progression.test.ts`.
 ```bash
 npm install
 npm run dev        # local dev server
-npm test           # 307 unit tests: migration chain, reducer invariants,
-                   #   progression branches, warm-up generation, prefill,
-                   #   timing, analytics, sleep merge, correlation, parser
-                   #   round-trips, preset and copy rules, sample data,
-                   #   navigation gestures, rest alerts
+npm test           # 394 unit tests: migration chain and backup import,
+                   #   reducer invariants, progression branches, warm-up
+                   #   generation, prefill, timing, analytics, sleep merge,
+                   #   correlation, parser round-trips, preset and copy rules,
+                   #   sample data, navigation gestures, rest alerts
 npm run build      # production build into dist/
 npm run preview    # serve the production build on :4173
 npm run ios:open   # build the iPhone app and open it in Xcode
-node scripts/e2e.mjs   # 106-assertion Playwright suite against the preview:
+node scripts/e2e.mjs   # 212-assertion Playwright suite against the preview:
                    #   migration, poisoned storage, the workout loop, tape
                    #   gestures including fast drags, rest-timer persistence,
                    #   warm-up generation, cancel, sample data, charts, the
