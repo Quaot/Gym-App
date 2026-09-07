@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useAppSelector, dispatch, getStore } from '../store/store'
 import { Sheet } from '../components/Sheet'
 import { downloadFile } from '../lib/download'
-import { decodeV2, freshState } from '../store/migrate'
+import { freshState, migrateBackup } from '../store/migrate'
 import { isStorageHealthy, persistAll, subscribeStorageHealth } from '../store/persist'
 import { fmtClock } from '../lib/util'
 import type { Unit } from '../types'
@@ -110,7 +110,9 @@ export const SettingsScreen = () => {
   const onFile = async (file: File | undefined) => {
     if (!file) return
     try {
-      const state = decodeV2(JSON.parse(await file.text()))
+      // A backup stands at the schema it was exported under, so it enters
+      // the migration chain there rather than being read as current.
+      const state = migrateBackup(JSON.parse(await file.text()))
       dispatch({ type: 'replaceState', state })
       persistAll(state)
       setMessage('Backup restored')

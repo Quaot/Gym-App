@@ -21,7 +21,9 @@ const DEVICES = [
   [375, 812, 3],
 ]
 
-const EXEC = process.env.CHROME_PATH ?? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'
+// Playwright's own Chromium unless you point CHROME_PATH at another one;
+// the browser it installs is the one it was tested against.
+const EXEC = process.env.CHROME_PATH
 const browser = await chromium.launch({ executablePath: EXEC })
 
 /** One shot at an exact pixel size: CSS size times the device ratio. */
