@@ -157,7 +157,7 @@ the PWA below.
 Pushing to `main` builds and publishes to GitHub Pages via
 `.github/workflows/deploy.yml` (unit tests gate the deploy). Enable it once
 under **Settings, Pages, Source: GitHub Actions**. The app then lives at
-`https://<owner>.github.io/Gym-App/`. Add it to your home screen from there.
+`https://<owner>.github.io/ironlog/`. Add it to your home screen from there.
 
-The base path comes from `APP_BASE`, which defaults to `/Gym-App/`. Use
+The base path comes from `APP_BASE`, which defaults to `/ironlog/`. Use
 `APP_BASE=/ npm run build` for a custom domain.

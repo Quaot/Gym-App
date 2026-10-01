@@ -7,7 +7,7 @@ import { VitePWA } from 'vite-plugin-pwa'
  * Two targets out of one source.
  *
  * The web build is the PWA it has always been: served from
- * https://<user>.github.io/Gym-App/ in production, root in dev.
+ * https://<user>.github.io/ironlog/ in production, root in dev.
  *
  * The native build (`npm run build:ios`) is the same app served off the
  * shell's own scheme with the files already on the device. That needs a root
@@ -16,7 +16,7 @@ import { VitePWA } from 'vite-plugin-pwa'
  * left to register a stale second copy of the app in front of the real one.
  */
 const native = process.env.NATIVE === '1'
-const base = native ? '/' : process.env.APP_BASE ?? '/Gym-App/'
+const base = native ? '/' : process.env.APP_BASE ?? '/ironlog/'
 
 export default defineConfig({
   base,

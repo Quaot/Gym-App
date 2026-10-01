@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import path from 'node:path'
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
-const BASE = process.env.E2E_URL ?? 'http://127.0.0.1:4173/Gym-App/'
+const BASE = process.env.E2E_URL ?? 'http://127.0.0.1:4173/ironlog/'
 // Playwright's own Chromium unless you point CHROME_PATH at another one;
 // the browser it installs is the one it was tested against.
 const EXEC = process.env.CHROME_PATH
